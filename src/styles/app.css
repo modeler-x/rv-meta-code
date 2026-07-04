@@ -1,0 +1,15 @@
+@import './theme.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; }
+html, body, #app { height: 100%; margin: 0; }
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  background: var(--rvc-bg);
+  color: var(--rvc-text);
+}
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+::selection { background: transparent; }
