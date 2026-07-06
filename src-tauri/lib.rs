@@ -9,12 +9,39 @@ pub mod repositories;
 pub mod services;
 pub mod utils;
 
+use crate::commands::connection::delete::delete_connection;
+use crate::commands::connection::list::list_connections;
+use crate::commands::connection::save::save_connection;
+use crate::commands::connection::set_active::set_active_connection;
+use crate::commands::connection::test::test_connection;
 use crate::commands::schema::compile::compile_schema;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![compile_schema])
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .level(log::LevelFilter::Info)
+                // 配布後にユーザー端末でログが肥大化しないよう、
+                // 1ファイル最大 5MB・世代は 1 つだけ保持する。
+                .max_file_size(5_000_000)
+                .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepOne)
+                .targets([
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+                    tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
+                        file_name: None,
+                    }),
+                ])
+                .build(),
+        )
+        .invoke_handler(tauri::generate_handler![
+            compile_schema,
+            list_connections,
+            save_connection,
+            delete_connection,
+            set_active_connection,
+            test_connection
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

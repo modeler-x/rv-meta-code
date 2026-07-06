@@ -7,10 +7,26 @@ pub struct AppError {
 }
 
 impl AppError {
-    pub fn validation(message: &str) -> Self {
+    fn new(code: &str, message: &str) -> Self {
         Self {
-            code: "VALIDATION_ERROR".to_string(),
+            code: code.to_string(),
             message: message.to_string(),
         }
+    }
+
+    pub fn validation(message: &str) -> Self {
+        Self::new("VALIDATION_ERROR", message)
+    }
+
+    pub fn not_found(message: &str) -> Self {
+        Self::new("NOT_FOUND", message)
+    }
+
+    pub fn io(message: &str) -> Self {
+        Self::new("IO_ERROR", message)
+    }
+
+    pub fn crypto(message: &str) -> Self {
+        Self::new("CRYPTO_ERROR", message)
     }
 }

@@ -1,0 +1,9 @@
+use tauri::AppHandle;
+
+use crate::commands::connection::build_service;
+use crate::errors::app_error::AppError;
+
+#[tauri::command]
+pub async fn set_active_connection(app: AppHandle, id: String) -> Result<(), AppError> {
+    build_service(&app)?.set_active(&id)
+}

@@ -26,11 +26,26 @@
     <FormRow label={$t('f_port')}><input class="w-full bg-transparent text-right outline-none" bind:value={viewModel.draft.port} /></FormRow>
     <FormRow label={$t('f_database')}><input class="w-full bg-transparent text-right outline-none" placeholder="appdb" bind:value={viewModel.draft.database} /></FormRow>
     <FormRow label={$t('f_user')}><input class="w-full bg-transparent text-right outline-none" placeholder="postgres" bind:value={viewModel.draft.user} /></FormRow>
+    <FormRow label={$t('f_password')}><input type="password" class="w-full bg-transparent text-right outline-none" placeholder={viewModel.draft.hasPassword ? $t('c_password_keep') : '••••••••'} bind:value={viewModel.draft.password} /></FormRow>
   </SectionList>
+  <p class="mb-3 px-1 text-xs text-[color:var(--rvc-muted)]">{$t('c_secret_hint')}</p>
+
+  {#if viewModel.testMessage}
+    <p class="mb-3 px-1 text-xs {viewModel.testState === 'ok' ? 'text-[#12805c]' : 'text-[#e5484d]'}">{viewModel.testMessage}</p>
+  {/if}
+  {#if viewModel.errorMessage}
+    <p class="mb-3 px-1 text-xs text-[#e5484d]">{viewModel.errorMessage}</p>
+  {/if}
+
   <div class="mb-6 flex gap-2">
-    <button class="rounded-md bg-[color:var(--rvc-accent)] px-5 py-2 font-semibold text-white" on:click={() => viewModel.saveConnection()}>{$t('save')}</button>
+    <button class="rounded-md bg-[color:var(--rvc-accent)] px-5 py-2 font-semibold text-white disabled:opacity-50" disabled={viewModel.isBusy} on:click={() => viewModel.saveConnection()}>{$t('save')}</button>
+    <button class="rounded-md border border-[color:var(--rvc-border)] px-4 py-2 disabled:opacity-50" disabled={viewModel.testState === 'testing'} on:click={() => viewModel.testConnection()}>{viewModel.testState === 'testing' ? $t('c_testing') : $t('c_test')}</button>
     <button class="rounded-md border border-[color:var(--rvc-border)] px-4 py-2" on:click={() => viewModel.cancelForm()}>{$t('cancel')}</button>
   </div>
+{/if}
+
+{#if !viewModel.isFormOpen && viewModel.errorMessage}
+  <p class="mb-3 px-1 text-xs text-[#e5484d]">{viewModel.errorMessage}</p>
 {/if}
 
 <SectionList title="">

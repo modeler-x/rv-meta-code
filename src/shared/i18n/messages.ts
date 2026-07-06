@@ -23,7 +23,8 @@ export const messages = {
     p_role: 'Role', p_org: 'Organization', p_email: 'Email', p_status: 'Status', status_registered: 'Registered',
     role_developer: 'Developer', role_dba: 'DBA', role_admin: 'Admin', btn_edit_profile: 'Edit Profile',
     c_databases: 'Databases', c_add: 'Add Database', c_active: 'Active', c_set_active: 'Set active', c_form_add: 'Add Database', c_form_edit: 'Edit Database',
-    f_name: 'Name', f_host: 'Host', f_port: 'Port', f_database: 'Database', f_user: 'Role',
+    c_test: 'Test connection', c_testing: 'Testing…', c_secret_hint: 'Stored encrypted on this device', c_password_keep: 'Leave blank to keep current password',
+    f_name: 'Name', f_host: 'Host', f_port: 'Port', f_database: 'Database', f_user: 'Role', f_password: 'Password',
     gen_confirm_title: 'Generate documentation?', gen_confirm_msg: 'Generate an OpenAPI document from schema "{schema}"? This queries the connected database.',
     gen_run: 'Generate', gen_running_title: 'Generating documentation', gen_done_title: 'Documentation generated', gen_err_title: 'Generation failed', gen_view_doc: 'View Document',
     gen_err_detail: 'No tables or views were found in schema "{schema}".'
@@ -50,7 +51,8 @@ export const messages = {
     p_role: 'ロール', p_org: '組織', p_email: 'メール', p_status: 'ステータス', status_registered: '登録済み',
     role_developer: '開発者', role_dba: 'DBA', role_admin: '管理者', btn_edit_profile: 'プロフィールを編集',
     c_databases: 'データベース', c_add: 'データベースを追加', c_active: '使用中', c_set_active: '使用中にする', c_form_add: 'データベースを追加', c_form_edit: 'データベースを編集',
-    f_name: '名前', f_host: 'ホスト', f_port: 'ポート', f_database: 'データベース', f_user: 'ロール',
+    c_test: '接続テスト', c_testing: 'テスト中…', c_secret_hint: 'この端末に暗号化して保存されます', c_password_keep: '空欄で現在のパスワードを維持',
+    f_name: '名前', f_host: 'ホスト', f_port: 'ポート', f_database: 'データベース', f_user: 'ロール', f_password: 'パスワード',
     gen_confirm_title: 'ドキュメントを生成しますか？', gen_confirm_msg: 'スキーマ「{schema}」から OpenAPI ドキュメントを生成します。接続中のデータベースへクエリを発行します。',
     gen_run: '実行', gen_running_title: 'ドキュメントを生成中', gen_done_title: 'ドキュメントを生成しました', gen_err_title: '生成に失敗しました', gen_view_doc: 'ドキュメントを開く',
     gen_err_detail: 'スキーマ「{schema}」にテーブル・ビューが見つかりませんでした。'

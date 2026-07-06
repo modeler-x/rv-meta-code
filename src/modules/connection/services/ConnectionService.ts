@@ -1,4 +1,10 @@
-import type { ConnectionDto } from '@/modules/connection/dto/ConnectionDto';
+import type {
+  ConnectionDraft,
+  ConnectionDto,
+  SaveConnectionInput,
+  TestConnectionInput,
+  TestConnectionResult
+} from '@/modules/connection/dto/ConnectionDto';
 import type { IConnectionRepository } from '@/modules/connection/repositories/ConnectionRepository';
 import type { Result } from '@/shared/result/Result';
 
@@ -9,31 +15,56 @@ export class ConnectionService {
     return this.connectionRepository.listConnections();
   }
 
-  createDraft(): ConnectionDto {
-    return { id: '', name: '', host: '', port: '5432', database: '', user: '', isCurrent: false };
+  async saveConnection(input: SaveConnectionInput): Promise<Result<ConnectionDto>> {
+    return this.connectionRepository.saveConnection(input);
   }
 
-  isValidDraft(draft: ConnectionDto): boolean {
+  async deleteConnection(id: string): Promise<Result<void>> {
+    return this.connectionRepository.deleteConnection(id);
+  }
+
+  async setActiveConnection(id: string): Promise<Result<void>> {
+    return this.connectionRepository.setActiveConnection(id);
+  }
+
+  async testConnection(input: TestConnectionInput): Promise<Result<TestConnectionResult>> {
+    return this.connectionRepository.testConnection(input);
+  }
+
+  createDraft(): ConnectionDraft {
+    return { id: '', name: '', host: '', port: '5432', database: '', user: '', password: '', isCurrent: false, hasPassword: false };
+  }
+
+  toDraft(connection: ConnectionDto): ConnectionDraft {
+    // 秘匿値はバックエンドから返らないため、編集時の password は空で開始する。
+    return { ...connection, password: '' };
+  }
+
+  isValidDraft(draft: ConnectionDraft): boolean {
     return draft.name.trim().length > 0 && draft.host.trim().length > 0;
   }
 
-  upsertConnection(connections: ConnectionDto[], draft: ConnectionDto): ConnectionDto[] {
-    if (draft.id) {
-      return connections.map((connection) => (connection.id === draft.id ? { ...draft } : connection));
-    }
-    const created: ConnectionDto = { ...draft, id: `c${Date.now()}`, isCurrent: connections.length === 0 };
-    return [...connections, created];
+  toSaveInput(draft: ConnectionDraft): SaveConnectionInput {
+    return {
+      id: draft.id.length > 0 ? draft.id : undefined,
+      name: draft.name,
+      host: draft.host,
+      port: draft.port,
+      database: draft.database,
+      user: draft.user,
+      // 空なら既存パスワードを維持する。
+      password: draft.password.length > 0 ? draft.password : undefined
+    };
   }
 
-  removeConnection(connections: ConnectionDto[], connectionId: string): ConnectionDto[] {
-    const remaining = connections.filter((connection) => connection.id !== connectionId);
-    if (remaining.length > 0 && !remaining.some((connection) => connection.isCurrent)) {
-      return remaining.map((connection, index) => ({ ...connection, isCurrent: index === 0 }));
-    }
-    return remaining;
-  }
-
-  activateConnection(connections: ConnectionDto[], connectionId: string): ConnectionDto[] {
-    return connections.map((connection) => ({ ...connection, isCurrent: connection.id === connectionId }));
+  toTestInput(draft: ConnectionDraft): TestConnectionInput {
+    return {
+      id: draft.id.length > 0 ? draft.id : undefined,
+      host: draft.host,
+      port: draft.port,
+      database: draft.database,
+      user: draft.user,
+      password: draft.password.length > 0 ? draft.password : undefined
+    };
   }
 }
