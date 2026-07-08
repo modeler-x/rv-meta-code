@@ -87,12 +87,11 @@ export class ServerService {
     };
   }
 
-  toTestInput(draft: ServerDraft, variables: unknown | null, baseUrlOverride: string): TestServerInput {
+  toTestInput(draft: ServerDraft, variables: unknown | null): TestServerInput {
     return {
       baseUrl: draft.baseUrl,
       variables: variables ?? undefined,
       healthPath: draft.healthPath.length > 0 ? draft.healthPath : undefined,
-      baseUrlOverride: baseUrlOverride.length > 0 ? baseUrlOverride : undefined,
       expectedStatus: draft.expectedStatus,
       timeoutMs: draft.timeoutMs
     };

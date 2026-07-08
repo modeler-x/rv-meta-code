@@ -27,15 +27,14 @@
     <FormRow label={$t('sv_environment')}><input class="w-full bg-transparent text-left outline-none" placeholder="dev" bind:value={viewModel.draft.environment} /></FormRow>
     <FormRow label={$t('sv_base_url')}><input class="w-full bg-transparent text-left font-mono outline-none" placeholder="https://api.example.com/v1" bind:value={viewModel.draft.baseUrl} /></FormRow>
     <FormRow label={$t('sv_description')}><input class="w-full bg-transparent text-left outline-none" bind:value={viewModel.draft.description} /></FormRow>
-    <FormRow label={$t('sv_variables')}><textarea class="w-full resize-y bg-transparent text-left font-mono text-xs outline-none" rows="3" placeholder={'{ "host": { "default": "api.example.com" } }'} bind:value={viewModel.draft.variablesText}></textarea></FormRow>
     <FormRow label={$t('sv_enabled')}><input type="checkbox" bind:checked={viewModel.draft.enabled} /></FormRow>
+    <FormRow label={$t('sv_variables')}><textarea class="w-full resize-y bg-transparent text-left font-mono text-xs outline-none" rows="3" placeholder={'{ "host": { "default": "api.example.com" } }'} bind:value={viewModel.draft.variablesText}></textarea></FormRow>
   </SectionList>
 
   <SectionList title={$t('sv_connectivity')}>
     <FormRow label={$t('sv_health_path')}><input class="w-full bg-transparent text-left font-mono outline-none" placeholder="/health" bind:value={viewModel.draft.healthPath} /></FormRow>
     <FormRow label={$t('sv_expected_status')}><input type="number" class="w-full bg-transparent text-left font-mono outline-none" bind:value={viewModel.draft.expectedStatus} /></FormRow>
     <FormRow label={$t('sv_timeout_ms')}><input type="number" class="w-full bg-transparent text-left font-mono outline-none" bind:value={viewModel.draft.timeoutMs} /></FormRow>
-    <FormRow label={$t('sv_base_override')}><input class="w-full bg-transparent text-left font-mono outline-none" placeholder="https://api.example.com" bind:value={viewModel.baseUrlOverride} /></FormRow>
   </SectionList>
   <p class="mb-3 px-1 text-xs text-[color:var(--rvc-muted)]">{$t('sv_connectivity_hint')}</p>
 

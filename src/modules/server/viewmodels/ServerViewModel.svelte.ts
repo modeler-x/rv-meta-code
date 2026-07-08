@@ -20,8 +20,6 @@ export class ServerViewModel {
   isFormOpen = $state(false);
   isBusy = $state(false);
   errorMessage = $state('');
-  // 導通確認の絶対ベースURL補完（base_url が相対の場合のみ使用。永続化しない）
-  baseUrlOverride = $state('');
   testState: ServerTestState = $state('idle');
   testMessage = $state('');
 
@@ -102,7 +100,7 @@ export class ServerViewModel {
     }
     this.testState = 'testing';
     this.testMessage = '';
-    const input = this.serverService.toTestInput(this.draft, variables.data, this.baseUrlOverride);
+    const input = this.serverService.toTestInput(this.draft, variables.data);
     const result = await this.serverService.testServer(input);
     if (!result.success) {
       this.testState = 'fail';
@@ -123,7 +121,6 @@ export class ServerViewModel {
 
   private resetFeedback(): void {
     this.errorMessage = '';
-    this.baseUrlOverride = '';
     this.testState = 'idle';
     this.testMessage = '';
   }

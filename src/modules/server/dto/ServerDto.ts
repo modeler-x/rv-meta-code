@@ -48,7 +48,6 @@ export type TestServerInput = {
   baseUrl: string;
   variables?: unknown;
   healthPath?: string;
-  baseUrlOverride?: string;
   expectedStatus: number;
   timeoutMs: number;
 };

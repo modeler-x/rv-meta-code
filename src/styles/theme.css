@@ -9,6 +9,7 @@
   --rvc-border: rgba(0, 0, 0, 0.09);
   --rvc-hover: rgba(0, 0, 0, 0.045);
   --rvc-highlight: rgba(255, 213, 0, 0.5);
+  --rvc-selection: rgba(0, 144, 168, 0.28);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,5 +23,6 @@
     --rvc-border: rgba(255, 255, 255, 0.1);
     --rvc-hover: rgba(255, 255, 255, 0.06);
     --rvc-highlight: rgba(255, 213, 0, 0.32);
+    --rvc-selection: rgba(10, 180, 210, 0.36);
   }
 }

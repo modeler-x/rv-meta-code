@@ -12,7 +12,28 @@ body {
 }
 button, input, select { font: inherit; }
 button { cursor: pointer; }
+
+/* UI テキスト（ラベル・一覧など）はネイティブアプリ風に選択ハイライトを抑制 */
 ::selection { background: transparent; }
+
+/* 編集可能な項目は通常のテキスト選択・カーソル操作を許可する。
+   ドラッグ選択・ダブルクリック・選択範囲の DELETE などが可視かつ機能するようにする。 */
+input,
+textarea,
+[contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+input:not([type='checkbox']):not([type='radio']):not([type='range']),
+textarea {
+  cursor: text;
+}
+input::selection,
+textarea::selection,
+[contenteditable]::selection {
+  background: var(--rvc-selection);
+  color: inherit;
+}
 
 /* 検索一致文字のハイライト（黄色・トーンはテーマに追従） */
 .rvc-mark {

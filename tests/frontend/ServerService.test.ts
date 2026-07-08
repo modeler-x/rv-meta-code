@@ -63,13 +63,12 @@ describe('ServerService', () => {
     expect(input.enabled).toBe(true);
   });
 
-  it('builds test input from the draft, omitting empty health path and override', () => {
+  it('builds test input from the draft, omitting empty health path', () => {
     const service = new ServerService(new FakeServerRepository());
     const draft = service.createDraft();
     draft.baseUrl = 'https://api.example.com';
-    const input = service.toTestInput(draft, null, '');
+    const input = service.toTestInput(draft, null);
     expect(input.healthPath).toBeUndefined();
-    expect(input.baseUrlOverride).toBeUndefined();
     expect(input.baseUrl).toBe('https://api.example.com');
     expect(input.expectedStatus).toBe(200);
     expect(input.timeoutMs).toBe(3000);
@@ -82,7 +81,7 @@ describe('ServerService', () => {
     draft.healthPath = '/health';
     draft.expectedStatus = 204;
     draft.timeoutMs = 1500;
-    const input = service.toTestInput(draft, null, '');
+    const input = service.toTestInput(draft, null);
     expect(input.healthPath).toBe('/health');
     expect(input.expectedStatus).toBe(204);
     expect(input.timeoutMs).toBe(1500);
