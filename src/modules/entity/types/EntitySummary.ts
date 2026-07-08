@@ -9,6 +9,8 @@ export type EntitySummary = {
   description: string | null;
   fieldCount: number;
   operationCount: number;
+  // 参照専用ポリシー（true なら list/get のみ）。
+  isReadOnly: boolean;
 };
 
 // rv_meta.openapi_fields の1行。

@@ -4,6 +4,7 @@
   import IconTile from '@/shared/components/IconTile.svelte';
   import MethodBadge from '@/shared/components/MethodBadge.svelte';
   import StatusBadge from '@/shared/components/StatusBadge.svelte';
+  import BusyOverlay from '@/shared/components/BusyOverlay.svelte';
   import type { EntitySummary, EntityField } from '@/modules/entity/types/EntitySummary';
   import type { OperationSummary } from '@/modules/operation/types/OperationSummary';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
@@ -11,6 +12,8 @@
   export let fields: EntityField[];
   export let operations: OperationSummary[];
   export let onOpenOperation: (operationId: string) => void;
+  export let onToggleReadOnly: (isReadOnly: boolean) => void = () => {};
+  export let isReadOnlyUpdating = false;
 
   function fieldType(field: EntityField): string {
     const schema = field.jsonSchema ?? {};
@@ -27,7 +30,21 @@
     <p class="text-xs text-[color:var(--rvc-muted)]">{entity.tableSchema}.{entity.tableName}</p>
   </div>
 </div>
-{#if entity.description}<p class="mb-6 text-sm leading-6">{entity.description}</p>{/if}
+{#if entity.description}<p class="mb-4 text-sm leading-6">{entity.description}</p>{/if}
+
+<div class="mb-6 flex items-center justify-between rounded-lg border border-[color:var(--rvc-border)] bg-[color:var(--rvc-search)] px-4 py-3">
+  <div class="min-w-0">
+    <p class="text-sm font-semibold">{$t('entity_read_only')}</p>
+    <p class="text-xs text-[color:var(--rvc-muted)]">{$t('entity_read_only_hint')}</p>
+  </div>
+  <input
+    type="checkbox"
+    class="toggle toggle-sm"
+    checked={entity.isReadOnly}
+    disabled={isReadOnlyUpdating}
+    on:change={(event) => onToggleReadOnly(event.currentTarget.checked)}
+  />
+</div>
 
 <SectionList title={`${$t('sec_fields')} / ${fields.length}`}>
   {#each fields as field}
@@ -56,3 +73,5 @@
     </SectionListRow>
   {/each}
 </SectionList>
+
+<BusyOverlay show={isReadOnlyUpdating} label={$t('busy_working')} />

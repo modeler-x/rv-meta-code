@@ -3,7 +3,8 @@ use tokio_postgres::Row;
 
 use crate::dto::compile_schema_response::CompileSchemaResponse;
 use crate::dto::metadata_dto::{
-    DocumentDto, EntityDetailDto, EntitySummaryDto, FieldDto, OperationDto, SchemaSummaryDto,
+    DocumentDto, EntityDetailDto, EntitySummaryDto, FieldDto, OpenApiSpecDto, OperationDto,
+    SchemaSummaryDto,
 };
 use crate::errors::app_error::AppError;
 use crate::infrastructure::pg::{self, PgTarget};
@@ -120,7 +121,8 @@ impl MetadataService {
             .query(
                 "SELECT e.id, e.table_schema, e.table_name, e.resource_name, e.description,
                         (SELECT count(*) FROM rv_meta.openapi_fields f     WHERE f.entity_id = e.id),
-                        (SELECT count(*) FROM rv_meta.openapi_operations o WHERE o.entity_id = e.id)
+                        (SELECT count(*) FROM rv_meta.openapi_operations o WHERE o.entity_id = e.id),
+                        e.is_read_only
                  FROM rv_meta.openapi_entities e
                  JOIN rv_meta.openapi_documents d ON d.id = e.document_id
                  WHERE $1::text IS NULL OR d.schema_name = $1
@@ -140,6 +142,7 @@ impl MetadataService {
                 description: row.get(4),
                 field_count: row.get(5),
                 operation_count: row.get(6),
+                is_read_only: row.get(7),
             })
             .collect())
     }
@@ -202,6 +205,51 @@ impl MetadataService {
             operations: operation_rows.iter().map(operation_from_row).collect(),
             components,
         })
+    }
+
+    /// 選択されたスキーマ（ドキュメント）ごとの OpenAPI 仕様を返す。
+    /// servers[] には登録済みサーバが内包される。存在しないスキーマは黙ってスキップする。
+    pub async fn get_openapi_specs(
+        &self,
+        schemas: &[String],
+    ) -> Result<Vec<OpenApiSpecDto>, AppError> {
+        let client = pg::connect(&self.target).await?;
+        let mut specs = Vec::with_capacity(schemas.len());
+        for schema in schemas {
+            let row = client
+                .query_opt("SELECT rv_meta._get_openapi_document($1)", &[&schema])
+                .await
+                .map_err(db_err)?;
+            if let Some(row) = row {
+                let spec: Option<Value> = row.get(0);
+                if let Some(spec) = spec {
+                    specs.push(OpenApiSpecDto {
+                        schema_name: schema.clone(),
+                        spec,
+                    });
+                }
+            }
+        }
+        Ok(specs)
+    }
+
+    /// entity の参照専用ポリシーを切り替える（rv_meta.set_read_only を実行）。
+    /// DB 側で is_read_only を更新し operations を再生成する。
+    pub async fn set_read_only(
+        &self,
+        schema: &str,
+        table: &str,
+        is_read_only: bool,
+    ) -> Result<(), AppError> {
+        let client = pg::connect(&self.target).await?;
+        client
+            .execute(
+                "SELECT rv_meta.set_read_only($1, $2, $3)",
+                &[&schema, &table, &is_read_only],
+            )
+            .await
+            .map_err(db_err)?;
+        Ok(())
     }
 
     /// 単一オペレーションの内容。

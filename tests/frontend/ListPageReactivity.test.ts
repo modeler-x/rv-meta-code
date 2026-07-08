@@ -11,6 +11,7 @@ import type { IDocumentRepository } from '@/modules/document/repositories/Docume
 import type { IEntityRepository } from '@/modules/entity/repositories/EntityRepository';
 import { ok, type Result } from '@/shared/result/Result';
 import type { OpenApiDocumentSummary } from '@/modules/document/types/OpenApiDocumentSummary';
+import type { OpenApiSpec } from '@/modules/document/types/OpenApiSpec';
 import type { EntityDetail, EntitySummary } from '@/modules/entity/types/EntitySummary';
 
 // 初期表示後に非同期で届くデータが一覧へ反映されることを検証する
@@ -22,16 +23,22 @@ class FakeDocumentRepo implements IDocumentRepository {
       { id: 1, title: 'Doc A', description: 'desc', version: 'v1', schemaName: 'public', updatedAt: '2024-01-01T00:00:00Z' }
     ]);
   }
+  async getSpecs(): Promise<Result<OpenApiSpec[]>> {
+    return ok([]);
+  }
 }
 
 class FakeEntityRepo implements IEntityRepository {
   async listEntities(): Promise<Result<EntitySummary[]>> {
     return ok([
-      { id: 1, tableSchema: 'public', tableName: 'users', resourceName: 'users', description: null, fieldCount: 3, operationCount: 2 }
+      { id: 1, tableSchema: 'public', tableName: 'users', resourceName: 'users', description: null, fieldCount: 3, operationCount: 2, isReadOnly: false }
     ]);
   }
   async getEntityDetail(): Promise<Result<EntityDetail>> {
     return ok({ fields: [], operations: [], components: {} });
+  }
+  async setReadOnly(): Promise<Result<void>> {
+    return ok(undefined);
   }
 }
 

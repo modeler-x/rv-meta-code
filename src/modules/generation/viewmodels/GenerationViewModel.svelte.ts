@@ -6,7 +6,12 @@ export class GenerationViewModel {
   state: GenerationState = $state('idle');
   progress = $state(0);
   step = $state(1);
-  selectedSchema: SchemaSummary | null = $state(null);
+  // 選択されたスキーマ群（1件でも配列で扱う）。
+  selectedSchemas: SchemaSummary[] = $state([]);
+  // 実行中に処理中のスキーマ名。
+  currentSchemaName = $state('');
+  totalCount = $state(0);
+  doneCount = $state(0);
   resultDetail = $state('');
   errorMessage = $state('');
 
@@ -15,8 +20,12 @@ export class GenerationViewModel {
 
   constructor(private readonly generationService: GenerationService) {}
 
-  askGeneration(schema: SchemaSummary): void {
-    this.selectedSchema = schema;
+  askGeneration(schemas: SchemaSummary[]): void {
+    if (schemas.length === 0) return;
+    this.selectedSchemas = schemas;
+    this.totalCount = schemas.length;
+    this.doneCount = 0;
+    this.currentSchemaName = schemas.length === 1 ? schemas[0].name : '';
     this.progress = 0;
     this.step = 1;
     this.resultDetail = '';
@@ -25,32 +34,43 @@ export class GenerationViewModel {
   }
 
   async runGeneration(): Promise<void> {
-    if (!this.selectedSchema) return;
-    const schema = this.selectedSchema;
+    const schemas = this.selectedSchemas;
+    if (schemas.length === 0) return;
 
-    // 「続行(実行)」で rv_meta.compile(schema) を実際に実行する。
+    // 「続行(実行)」で rv_meta.compile(schema) を順に実行する。
+    // 進捗率は完了スキーマ数 / 総数で表す。
     this.state = 'running';
     this.step = 4;
-    this.progress = 30;
+    this.doneCount = 0;
+    this.progress = 0;
+    let totalOperations = 0;
 
-    const result = await this.generationService.compile(schema.name);
-
-    if (result.success) {
-      this.progress = 100;
-      this.resultDetail = `${result.data.operationCount} operations`;
-      this.state = 'done';
-      this.onCompiled?.();
-    } else {
-      this.errorMessage = result.error.message;
-      this.state = 'error';
+    for (let index = 0; index < schemas.length; index += 1) {
+      this.currentSchemaName = schemas[index].name;
+      const result = await this.generationService.compile(schemas[index].name);
+      if (!result.success) {
+        this.errorMessage = result.error.message;
+        this.state = 'error';
+        return;
+      }
+      totalOperations += result.data.operationCount;
+      this.doneCount = index + 1;
+      this.progress = Math.round((this.doneCount / this.totalCount) * 100);
     }
+
+    this.resultDetail = `${this.totalCount} documents / ${totalOperations} operations`;
+    this.state = 'done';
+    this.onCompiled?.();
   }
 
   closeGeneration(): void {
     this.state = 'idle';
     this.progress = 0;
     this.step = 1;
-    this.selectedSchema = null;
+    this.selectedSchemas = [];
+    this.currentSchemaName = '';
+    this.totalCount = 0;
+    this.doneCount = 0;
     this.resultDetail = '';
     this.errorMessage = '';
   }

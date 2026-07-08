@@ -6,7 +6,7 @@ import type { OperationSummary } from '@/modules/operation/types/OperationSummar
 
 const entity: EntitySummary = {
   id: 1, tableSchema: 'public', tableName: 'orders', resourceName: 'orders',
-  description: null, fieldCount: 3, operationCount: 5
+  description: null, fieldCount: 3, operationCount: 5, isReadOnly: false
 };
 
 function baseOperation(overrides: Partial<OperationSummary>): OperationSummary {

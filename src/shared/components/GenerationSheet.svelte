@@ -10,8 +10,17 @@
   export let onRun: () => void;
   export let onOpenDocument: () => void;
   export let errorMessage = '';
+  export let totalCount = 1;
+  export let doneCount = 0;
   $: stepText = $genSteps[Math.max(0, Math.min(step - 1, $genSteps.length - 1))];
-  $: confirmMessage = $t('gen_confirm_msg').replace('{schema}', schemaName);
+  $: confirmMessage =
+    totalCount > 1
+      ? $t('gen_confirm_msg_many').replace('{n}', String(totalCount))
+      : $t('gen_confirm_msg').replace('{schema}', schemaName);
+  $: progressLabel =
+    totalCount > 1
+      ? $t('gen_progress').replace('{done}', String(doneCount)).replace('{total}', String(totalCount))
+      : stepText;
 </script>
 
 {#if state !== 'idle'}
@@ -26,7 +35,7 @@
         <h2 class="mb-1 text-base font-bold">{$t('gen_running_title')}</h2>
         <p class="mb-4 font-mono text-xs text-[color:var(--rvc-muted)]">{schemaName}</p>
         <div class="mb-2 h-1.5 overflow-hidden rounded bg-[color:var(--rvc-search)]"><div class="h-full rounded bg-[color:var(--rvc-accent)] transition-[width] duration-300" style={`width:${progress}%`}></div></div>
-        <div class="flex items-center justify-between text-xs text-[color:var(--rvc-muted)]"><span>{stepText}</span><span class="tabular-nums">{progress}%</span></div>
+        <div class="flex items-center justify-between text-xs text-[color:var(--rvc-muted)]"><span>{progressLabel}</span><span class="tabular-nums">{progress}%</span></div>
       {:else if state === 'done'}
         <h2 class="mb-2 text-base font-bold">{$t('gen_done_title')}</h2>
         <p class="mb-5 text-[color:var(--rvc-muted)]">{detail}</p>

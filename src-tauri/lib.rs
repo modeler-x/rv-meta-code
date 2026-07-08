@@ -18,8 +18,10 @@ use crate::commands::metadata::current_connection::get_current_connection;
 use crate::commands::metadata::documents::list_documents;
 use crate::commands::metadata::entities::list_entities;
 use crate::commands::metadata::entity_detail::get_entity_detail;
+use crate::commands::metadata::openapi_specs::get_openapi_specs;
 use crate::commands::metadata::operation::get_operation;
 use crate::commands::metadata::schemas::list_schemas;
+use crate::commands::metadata::set_read_only::set_read_only;
 use crate::commands::schema::compile::compile_schema;
 use crate::commands::server::delete::delete_server;
 use crate::commands::server::list::list_servers;
@@ -57,6 +59,8 @@ pub fn run() {
             list_entities,
             get_entity_detail,
             get_operation,
+            set_read_only,
+            get_openapi_specs,
             list_servers,
             save_server,
             delete_server,

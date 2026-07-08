@@ -56,6 +56,8 @@ pub struct EntitySummaryDto {
     pub description: Option<String>,
     pub field_count: i64,
     pub operation_count: i64,
+    /// 参照専用ポリシー（true なら list/get のみ生成される）。
+    pub is_read_only: bool,
 }
 
 /// フィールド（openapi_fields）。
@@ -87,6 +89,15 @@ pub struct OperationDto {
     pub request_body: Option<Value>,
     pub responses: Value,
     pub required_fields: Vec<String>,
+}
+
+/// 1ドキュメント分の OpenAPI 仕様（schema 名 + 完全な OpenAPI JSON）。
+/// servers[] には登録済みサーバが内包される。SDK generator の入力に用いる。
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenApiSpecDto {
+    pub schema_name: String,
+    pub spec: Value,
 }
 
 /// テーブル(エンティティ)詳細＝フィールド一覧＋オペレーション一覧＋$ref 解決用 components。

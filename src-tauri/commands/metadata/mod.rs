@@ -2,8 +2,10 @@ pub mod current_connection;
 pub mod documents;
 pub mod entities;
 pub mod entity_detail;
+pub mod openapi_specs;
 pub mod operation;
 pub mod schemas;
+pub mod set_read_only;
 
 use tauri::{AppHandle, Manager};
 

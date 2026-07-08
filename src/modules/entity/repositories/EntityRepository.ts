@@ -5,6 +5,7 @@ import type { EntityDetail, EntitySummary } from '@/modules/entity/types/EntityS
 export interface IEntityRepository {
   listEntities(schema?: string): Promise<Result<EntitySummary[]>>;
   getEntityDetail(entityId: number): Promise<Result<EntityDetail>>;
+  setReadOnly(schema: string, table: string, isReadOnly: boolean): Promise<Result<void>>;
 }
 
 function toErrorMessage(error: unknown): string {
@@ -26,6 +27,15 @@ export class EntityRepository implements IEntityRepository {
       return ok(await invokeTauri<EntityDetail>('get_entity_detail', { entityId }));
     } catch (error) {
       return fail<EntityDetail>('IPC_ERROR', toErrorMessage(error));
+    }
+  }
+
+  async setReadOnly(schema: string, table: string, isReadOnly: boolean): Promise<Result<void>> {
+    try {
+      await invokeTauri<void>('set_read_only', { schema, table, isReadOnly });
+      return ok(undefined);
+    } catch (error) {
+      return fail<void>('IPC_ERROR', toErrorMessage(error));
     }
   }
 }

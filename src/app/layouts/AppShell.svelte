@@ -36,8 +36,7 @@
   // 生成成功後はドキュメントを再読込し、履歴に記録する。
   generationViewModel.onCompiled = () => {
     void documentViewModel.loadDocuments();
-    const schema = generationViewModel.selectedSchema;
-    if (schema) {
+    for (const schema of generationViewModel.selectedSchemas) {
       recentViewModel.record({ kind: 'schema', title: schema.name, subtitle: schema.comment ?? 'schema', targetId: schema.name, schemaName: schema.name });
     }
   };
@@ -126,7 +125,7 @@
         {:else if route.name === 'entities'}
           <EntityListPage viewModel={entityViewModel} onOpenEntity={(entityId) => openEntity(entityId)} />
         {:else if route.name === 'entityDetail' && selectedEntity}
-          <EntityDetailPage entity={selectedEntity} fields={entityViewModel.detail?.fields ?? []} operations={entityViewModel.detail?.operations ?? []} onOpenOperation={(operationId) => openOperation(selectedEntity.id.toString(), operationId)} />
+          <EntityDetailPage entity={selectedEntity} fields={entityViewModel.detail?.fields ?? []} operations={entityViewModel.detail?.operations ?? []} onOpenOperation={(operationId) => openOperation(selectedEntity.id.toString(), operationId)} onToggleReadOnly={(isReadOnly) => entityViewModel.toggleReadOnly(selectedEntity, isReadOnly)} isReadOnlyUpdating={entityViewModel.isReadOnlyUpdating} />
         {:else if route.name === 'operationDetail' && selectedEntity && selectedOperation}
           <OperationDetailPage entity={selectedEntity} operation={selectedOperation} fieldOrder={(entityViewModel.detail?.fields ?? []).map((field) => field.columnName)} components={entityViewModel.detail?.components ?? {}} />
         {:else if route.name === 'recent'}
@@ -140,6 +139,6 @@
         {/if}
       </div>
     </section>
-    <GenerationSheet state={generationViewModel.state} schemaName={generationViewModel.selectedSchema?.name ?? ''} progress={generationViewModel.progress} step={generationViewModel.step} detail={generationViewModel.resultDetail} errorMessage={generationViewModel.errorMessage} onCancel={() => generationViewModel.closeGeneration()} onRun={() => generationViewModel.runGeneration()} onOpenDocument={() => { generationViewModel.closeGeneration(); navigate('documents'); }} />
+    <GenerationSheet state={generationViewModel.state} schemaName={generationViewModel.currentSchemaName} totalCount={generationViewModel.totalCount} doneCount={generationViewModel.doneCount} progress={generationViewModel.progress} step={generationViewModel.step} detail={generationViewModel.resultDetail} errorMessage={generationViewModel.errorMessage} onCancel={() => generationViewModel.closeGeneration()} onRun={() => generationViewModel.runGeneration()} onOpenDocument={() => { generationViewModel.closeGeneration(); navigate('documents'); }} />
   </main>
 </MacWindow>
