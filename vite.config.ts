@@ -12,6 +12,9 @@ export default defineConfig({
     strictPort: true
   },
   resolve: {
+    // Tauri SPA（SSRなし）。テストでの Svelte コンポーネント描画にクライアント
+    // ビルドを解決させるため browser 条件を明示する。
+    conditions: ['browser'],
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }

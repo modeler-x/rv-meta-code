@@ -2,6 +2,7 @@ import { ok, fail, type Result } from '@/shared/result/Result';
 import { invokeTauri } from '@/shared/ipc/invokeTauri';
 import type {
   ConnectionDto,
+  CurrentConnectionDto,
   SaveConnectionInput,
   TestConnectionInput,
   TestConnectionResult
@@ -13,6 +14,7 @@ export interface IConnectionRepository {
   deleteConnection(id: string): Promise<Result<void>>;
   setActiveConnection(id: string): Promise<Result<void>>;
   testConnection(input: TestConnectionInput): Promise<Result<TestConnectionResult>>;
+  getCurrentConnection(): Promise<Result<CurrentConnectionDto | null>>;
 }
 
 type AppErrorShape = { code?: string; message?: string };
@@ -65,6 +67,14 @@ export class ConnectionRepository implements IConnectionRepository {
       return ok(await invokeTauri<TestConnectionResult>('test_connection', { request: input }));
     } catch (error) {
       return toErrorResult<TestConnectionResult>(error);
+    }
+  }
+
+  async getCurrentConnection(): Promise<Result<CurrentConnectionDto | null>> {
+    try {
+      return ok(await invokeTauri<CurrentConnectionDto | null>('get_current_connection'));
+    } catch (error) {
+      return toErrorResult<CurrentConnectionDto | null>(error);
     }
   }
 }

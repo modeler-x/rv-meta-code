@@ -5,12 +5,13 @@ export type TestState = 'idle' | 'testing' | 'ok' | 'fail';
 
 export class ConnectionViewModel {
   connections: ConnectionDto[] = $state([]);
-  draft: ConnectionDraft = $state({ id: '', name: '', host: '', port: '5432', database: '', user: '', password: '', isCurrent: false, hasPassword: false });
+  draft: ConnectionDraft = $state({ id: '', name: '', host: '', port: '5432', database: '', user: '', password: '', isCurrent: false, hasPassword: false, excludedSchemas: [] });
   isFormOpen = $state(false);
   isBusy = $state(false);
   errorMessage = $state('');
   testState: TestState = $state('idle');
   testMessage = $state('');
+  schemaInput = $state('');
 
   constructor(private readonly connectionService: ConnectionService) {}
 
@@ -99,9 +100,29 @@ export class ConnectionViewModel {
       : result.data.message;
   }
 
+  addExcludedSchema(): void {
+    // カンマ・空白・改行区切りで複数まとめて追加できる（例: `_timescale*, cron`）。
+    const values = this.schemaInput
+      .split(/[\s,]+/)
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0);
+    if (values.length === 0) return;
+    const merged = [...this.draft.excludedSchemas];
+    for (const value of values) {
+      if (!merged.includes(value)) merged.push(value);
+    }
+    this.draft.excludedSchemas = merged;
+    this.schemaInput = '';
+  }
+
+  removeExcludedSchema(schema: string): void {
+    this.draft.excludedSchemas = this.draft.excludedSchemas.filter((item) => item !== schema);
+  }
+
   private resetFeedback(): void {
     this.errorMessage = '';
     this.testState = 'idle';
     this.testMessage = '';
+    this.schemaInput = '';
   }
 }

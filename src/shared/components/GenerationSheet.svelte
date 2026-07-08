@@ -9,10 +9,9 @@
   export let onCancel: () => void;
   export let onRun: () => void;
   export let onOpenDocument: () => void;
-  const ERROR_CODE = 'EMPTY_SCHEMA';
+  export let errorMessage = '';
   $: stepText = $genSteps[Math.max(0, Math.min(step - 1, $genSteps.length - 1))];
   $: confirmMessage = $t('gen_confirm_msg').replace('{schema}', schemaName);
-  $: errorDetail = $t('gen_err_detail').replace('{schema}', schemaName);
 </script>
 
 {#if state !== 'idle'}
@@ -34,8 +33,7 @@
         <div class="flex justify-center gap-2"><button class="rounded-md border border-[color:var(--rvc-border)] px-5 py-2" on:click={onCancel}>{$t('close')}</button><button class="rounded-md bg-[color:var(--rvc-accent)] px-5 py-2 font-semibold text-white" on:click={onOpenDocument}>{$t('gen_view_doc')}</button></div>
       {:else}
         <h2 class="mb-2 text-base font-bold text-red-500">{$t('gen_err_title')}</h2>
-        <p class="mb-2 text-xs text-[color:var(--rvc-muted)]">{errorDetail}</p>
-        <p class="mb-5 inline-block rounded bg-red-500/10 px-2 py-1 font-mono text-[11px] text-red-500">{ERROR_CODE}</p>
+        <p class="mb-5 inline-block rounded bg-red-500/10 px-2 py-1 text-left font-mono text-[11px] text-red-500">{errorMessage}</p>
         <div><button class="rounded-md bg-[color:var(--rvc-accent)] px-5 py-2 font-semibold text-white" on:click={onCancel}>{$t('close')}</button></div>
       {/if}
     </div>

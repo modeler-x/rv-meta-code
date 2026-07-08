@@ -14,6 +14,12 @@ use crate::commands::connection::list::list_connections;
 use crate::commands::connection::save::save_connection;
 use crate::commands::connection::set_active::set_active_connection;
 use crate::commands::connection::test::test_connection;
+use crate::commands::metadata::current_connection::get_current_connection;
+use crate::commands::metadata::documents::list_documents;
+use crate::commands::metadata::entities::list_entities;
+use crate::commands::metadata::entity_detail::get_entity_detail;
+use crate::commands::metadata::operation::get_operation;
+use crate::commands::metadata::schemas::list_schemas;
 use crate::commands::schema::compile::compile_schema;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -40,7 +46,13 @@ pub fn run() {
             save_connection,
             delete_connection,
             set_active_connection,
-            test_connection
+            test_connection,
+            get_current_connection,
+            list_schemas,
+            list_documents,
+            list_entities,
+            get_entity_detail,
+            get_operation
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

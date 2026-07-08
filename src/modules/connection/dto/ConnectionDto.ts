@@ -8,6 +8,7 @@ export type ConnectionDto = {
   user: string;
   isCurrent: boolean;
   hasPassword: boolean;
+  excludedSchemas?: string[];
 };
 
 // フォーム編集中の下書き。password はこの端末で暗号化保存される秘匿値。
@@ -21,6 +22,7 @@ export type ConnectionDraft = {
   password: string;
   isCurrent: boolean;
   hasPassword: boolean;
+  excludedSchemas: string[];
 };
 
 // save_connection コマンドへ渡す入力。id 未指定なら新規、password 未指定なら現状維持。
@@ -32,6 +34,7 @@ export type SaveConnectionInput = {
   database: string;
   user: string;
   password?: string;
+  excludedSchemas?: string[];
 };
 
 // test_connection コマンドへ渡す入力。
@@ -49,4 +52,11 @@ export type TestConnectionResult = {
   isOk: boolean;
   message: string;
   serverVersion: string | null;
+};
+
+// get_current_connection コマンドの結果（ヘッダ表示用）。未接続なら null。
+export type CurrentConnectionDto = {
+  name: string;
+  database: string;
+  host: string;
 };

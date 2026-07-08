@@ -13,4 +13,7 @@ pub struct Connection {
     #[serde(default)]
     pub password: String,
     pub is_current: bool,
+    /// スキーマ一覧から除外するスキーマ名（複数）。
+    #[serde(default)]
+    pub excluded_schemas: Vec<String>,
 }

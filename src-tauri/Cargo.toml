@@ -21,7 +21,7 @@ serde_json = "1"
 tauri = { version = "2", features = [] }
 tauri-plugin-log = "2"
 log = "0.4"
-tokio-postgres = "0.7"
+tokio-postgres = { version = "0.7", features = ["with-serde_json-1"] }
 aes-gcm = "0.10"
 rand = "0.8"
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }

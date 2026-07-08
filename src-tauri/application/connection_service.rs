@@ -57,6 +57,9 @@ impl ConnectionService {
                         existing.password = password.clone();
                     }
                 }
+                if let Some(excluded) = request.excluded_schemas.as_ref() {
+                    existing.excluded_schemas = excluded.clone();
+                }
                 existing.clone()
             }
             None => {
@@ -70,6 +73,7 @@ impl ConnectionService {
                     user: request.user.clone(),
                     password: request.password.clone().unwrap_or_default(),
                     is_current: is_first,
+                    excluded_schemas: request.excluded_schemas.clone().unwrap_or_default(),
                 };
                 connections.push(connection.clone());
                 connection

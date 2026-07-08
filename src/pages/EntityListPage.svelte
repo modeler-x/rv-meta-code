@@ -4,17 +4,19 @@
   import IconTile from '@/shared/components/IconTile.svelte';
   import type { EntityViewModel } from '@/modules/entity/viewmodels/EntityViewModel.svelte';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
-  export let viewModel: EntityViewModel;
-  export let onOpenEntity: (entityId: string) => void;
+  let { viewModel, onOpenEntity }: { viewModel: EntityViewModel; onOpenEntity: (entityId: string) => void } = $props();
 </script>
 
-<SectionList title={`${$t('sec_tables')} / ${viewModel.tables.length}`}>
-  {#each viewModel.tables as entity}
-    <SectionListRow isButton><IconTile label="T" color="#0087aa" /><span class="flex-1"><span class="block font-mono font-semibold">{entity.name}</span><span class="block text-xs text-[color:var(--rvc-muted)]">{entity.summary}</span></span><span class="text-xs text-[color:var(--rvc-muted)]">{entity.rowCountLabel}</span><button class="text-[color:var(--rvc-accent)]" on:click={() => onOpenEntity(entity.id)}>{$t('open')}</button></SectionListRow>
-  {/each}
-</SectionList>
-<SectionList title={`${$t('sec_views')} / ${viewModel.views.length}`}>
-  {#each viewModel.views as entity}
-    <SectionListRow isButton><IconTile label="V" color="#5bb4ce" /><span class="flex-1"><span class="block font-mono font-semibold">{entity.name}</span><span class="block text-xs text-[color:var(--rvc-muted)]">{entity.summary}</span></span><span class="text-xs text-[color:var(--rvc-muted)]">{entity.rowCountLabel}</span><button class="text-[color:var(--rvc-accent)]" on:click={() => onOpenEntity(entity.id)}>{$t('open')}</button></SectionListRow>
+<SectionList title={`${$t('sec_entities')} / ${viewModel.entities.length}`}>
+  {#each viewModel.entities as entity}
+    <SectionListRow isButton on:click={() => onOpenEntity(String(entity.id))}>
+      <IconTile label="T" color="#0087aa" />
+      <span class="min-w-0 flex-1">
+        <span class="block font-mono font-semibold">{entity.tableName}</span>
+        <span class="block text-xs text-[color:var(--rvc-muted)]">{entity.description ?? ''}</span>
+        <span class="block font-mono text-[11px] text-[color:var(--rvc-muted)]">{entity.tableSchema}</span>
+      </span>
+      <span class="text-xs text-[color:var(--rvc-muted)]">{entity.fieldCount} {$t('unit_fields')} / {entity.operationCount} {$t('unit_operations')}</span>
+    </SectionListRow>
   {/each}
 </SectionList>

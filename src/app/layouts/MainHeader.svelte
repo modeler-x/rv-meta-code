@@ -5,6 +5,7 @@
   export let route: AppRoute;
   export let title: string;
   export let onBack: () => void;
+  export let connectionLabel: string;
 </script>
 
 <header class="flex h-[52px] shrink-0 items-center gap-3 border-b border-[color:var(--rvc-border)] bg-[color:var(--rvc-panel)] px-5 py-4">
@@ -13,5 +14,5 @@
   {/if}
   <h1 class="text-[15px] font-semibold">{title}</h1>
   <div class="flex-1"></div>
-  <div class="rounded-full border border-[color:var(--rvc-border)] bg-[color:var(--rvc-search)] px-3 py-1 text-xs text-[color:var(--rvc-muted)]">shopdb / localhost</div>
+  <div class="rounded-full border border-[color:var(--rvc-border)] bg-[color:var(--rvc-search)] px-3 py-1 text-xs text-[color:var(--rvc-muted)]">{connectionLabel}</div>
 </header>

@@ -15,6 +15,7 @@ pub struct ConnectionSummaryDto {
     pub user: String,
     pub is_current: bool,
     pub has_password: bool,
+    pub excluded_schemas: Vec<String>,
 }
 
 impl ConnectionSummaryDto {
@@ -28,6 +29,7 @@ impl ConnectionSummaryDto {
             user: connection.user.clone(),
             is_current: connection.is_current,
             has_password: !connection.password.is_empty(),
+            excluded_schemas: connection.excluded_schemas.clone(),
         }
     }
 }
@@ -47,6 +49,8 @@ pub struct SaveConnectionRequest {
     pub user: String,
     #[serde(default)]
     pub password: Option<String>,
+    #[serde(default)]
+    pub excluded_schemas: Option<Vec<String>>,
 }
 
 /// 接続テストのリクエスト。`id` を指定した場合、未入力項目は保存済みの値で補完する。

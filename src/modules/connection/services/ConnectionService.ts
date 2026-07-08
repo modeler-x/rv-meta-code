@@ -1,6 +1,7 @@
 import type {
   ConnectionDraft,
   ConnectionDto,
+  CurrentConnectionDto,
   SaveConnectionInput,
   TestConnectionInput,
   TestConnectionResult
@@ -31,13 +32,17 @@ export class ConnectionService {
     return this.connectionRepository.testConnection(input);
   }
 
+  async getCurrentConnection(): Promise<Result<CurrentConnectionDto | null>> {
+    return this.connectionRepository.getCurrentConnection();
+  }
+
   createDraft(): ConnectionDraft {
-    return { id: '', name: '', host: '', port: '5432', database: '', user: '', password: '', isCurrent: false, hasPassword: false };
+    return { id: '', name: '', host: '', port: '5432', database: '', user: '', password: '', isCurrent: false, hasPassword: false, excludedSchemas: [] };
   }
 
   toDraft(connection: ConnectionDto): ConnectionDraft {
     // 秘匿値はバックエンドから返らないため、編集時の password は空で開始する。
-    return { ...connection, password: '' };
+    return { ...connection, password: '', excludedSchemas: connection.excludedSchemas ?? [] };
   }
 
   isValidDraft(draft: ConnectionDraft): boolean {
@@ -53,7 +58,8 @@ export class ConnectionService {
       database: draft.database,
       user: draft.user,
       // 空なら既存パスワードを維持する。
-      password: draft.password.length > 0 ? draft.password : undefined
+      password: draft.password.length > 0 ? draft.password : undefined,
+      excludedSchemas: draft.excludedSchemas
     };
   }
 

@@ -1,11 +1,33 @@
 import type { RecentActivity } from '@/modules/recent/types/RecentActivity';
 
+const STORAGE_KEY = 'rv_recent_activities';
+const MAX_ITEMS = 20;
+
+/**
+ * 利用したページの履歴を端末(localStorage)に永続化する。
+ * バックエンド不要のクライアント側履歴。
+ */
 export class RecentService {
-  loadRecentActivities(): RecentActivity[] {
-    return [
-      { id: 'r1', kind: 'entity', title: 'orders', subtitle: 'Entity / public.orders', timeLabel: '10:24', targetId: 'orders' },
-      { id: 'r2', kind: 'schema', title: 'スキーマ', subtitle: 'Commerce API を生成', timeLabel: '10:19' },
-      { id: 'r3', kind: 'document', title: 'Catalog API', subtitle: 'OpenAPI document / v1.2.0', timeLabel: '昨日', targetId: 'catalog' }
-    ];
+  load(): RecentActivity[] {
+    try {
+      if (typeof localStorage === 'undefined') return [];
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? (JSON.parse(raw) as RecentActivity[]) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  save(activities: RecentActivity[]): void {
+    try {
+      if (typeof localStorage === 'undefined') return;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(activities.slice(0, MAX_ITEMS)));
+    } catch {
+      // 保存失敗（容量超過等）は履歴なので握りつぶす。
+    }
+  }
+
+  get maxItems(): number {
+    return MAX_ITEMS;
   }
 }

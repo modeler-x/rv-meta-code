@@ -29,4 +29,8 @@ impl AppError {
     pub fn crypto(message: &str) -> Self {
         Self::new("CRYPTO_ERROR", message)
     }
+
+    pub fn database(message: &str) -> Self {
+        Self::new("DATABASE_ERROR", message)
+    }
 }

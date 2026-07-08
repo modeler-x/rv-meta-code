@@ -4,6 +4,7 @@ import { ConnectionService } from '@/modules/connection/services/ConnectionServi
 import type { IConnectionRepository } from '@/modules/connection/repositories/ConnectionRepository';
 import type {
   ConnectionDto,
+  CurrentConnectionDto,
   SaveConnectionInput,
   TestConnectionInput,
   TestConnectionResult
@@ -33,6 +34,10 @@ class FakeConnectionRepository implements IConnectionRepository {
 
   async testConnection(_input: TestConnectionInput): Promise<Result<TestConnectionResult>> {
     return ok({ isOk: true, message: 'connection succeeded', serverVersion: 'PostgreSQL 16' });
+  }
+
+  async getCurrentConnection(): Promise<Result<CurrentConnectionDto | null>> {
+    return ok({ name: 'Local', database: 'appdb', host: 'localhost' });
   }
 }
 
