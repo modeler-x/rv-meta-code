@@ -7,6 +7,8 @@ import { EntityService } from '@/modules/entity/services/EntityService';
 import { EntityRepository } from '@/modules/entity/repositories/EntityRepository';
 import { ConnectionService } from '@/modules/connection/services/ConnectionService';
 import { ConnectionRepository } from '@/modules/connection/repositories/ConnectionRepository';
+import { ServerService } from '@/modules/server/services/ServerService';
+import { ServerRepository } from '@/modules/server/repositories/ServerRepository';
 import { GenerationService } from '@/modules/generation/services/GenerationService';
 import { ProfileService } from '@/modules/profile/services/ProfileService';
 import { PreferencesService } from '@/modules/preferences/services/PreferencesService';
@@ -18,6 +20,7 @@ export const appProvider = {
   documentService: new DocumentService(new DocumentRepository()),
   entityService: new EntityService(new EntityRepository()),
   connectionService: new ConnectionService(new ConnectionRepository()),
+  serverService: new ServerService(new ServerRepository()),
   generationService: new GenerationService(),
   profileService: new ProfileService(),
   preferencesService: new PreferencesService(),

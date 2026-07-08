@@ -8,7 +8,8 @@ export type AppRouteName =
   | 'operationDetail'
   | 'recent'
   | 'profile'
-  | 'connections';
+  | 'connections'
+  | 'servers';
 
 export type AppRoute = {
   name: AppRouteName;

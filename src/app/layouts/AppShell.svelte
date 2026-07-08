@@ -16,6 +16,7 @@
   import RecentPage from '@/pages/RecentPage.svelte';
   import ProfilePage from '@/pages/ProfilePage.svelte';
   import ConnectionPage from '@/pages/ConnectionPage.svelte';
+  import ServerPage from '@/pages/ServerPage.svelte';
   import { SchemaViewModel } from '@/modules/schema/viewmodels/SchemaViewModel.svelte';
   import { DocumentViewModel } from '@/modules/document/viewmodels/DocumentViewModel.svelte';
   import { EntityViewModel } from '@/modules/entity/viewmodels/EntityViewModel.svelte';
@@ -104,7 +105,7 @@
   const selectedDocument = $derived(documentViewModel.findDocument(route.documentId));
   const selectedOperation = $derived(entityViewModel.detail?.operations.find((operation) => String(operation.id) === route.operationId));
   const connectionLabel = $derived(currentConnection ? `${currentConnection.database} / ${currentConnection.host}` : $t('no_connection'));
-  const titleMap = $derived({ welcome: $t('title_welcome'), schema: $t('title_schemas'), documents: $t('title_documents'), documentDetail: selectedDocument?.title ?? $t('title_documents'), entities: $t('title_entities'), entityDetail: selectedEntity?.tableName ?? '', operationDetail: selectedOperation?.path ?? $t('sec_operations'), recent: $t('title_recent'), profile: $t('title_profile'), connections: $t('title_connections') });
+  const titleMap = $derived({ welcome: $t('title_welcome'), schema: $t('title_schemas'), documents: $t('title_documents'), documentDetail: selectedDocument?.title ?? $t('title_documents'), entities: $t('title_entities'), entityDetail: selectedEntity?.tableName ?? '', operationDetail: selectedOperation?.path ?? $t('sec_operations'), recent: $t('title_recent'), profile: $t('title_profile'), connections: $t('title_connections'), servers: $t('title_servers') });
   const title = $derived(titleMap[route.name]);
 </script>
 
@@ -127,13 +128,15 @@
         {:else if route.name === 'entityDetail' && selectedEntity}
           <EntityDetailPage entity={selectedEntity} fields={entityViewModel.detail?.fields ?? []} operations={entityViewModel.detail?.operations ?? []} onOpenOperation={(operationId) => openOperation(selectedEntity.id.toString(), operationId)} />
         {:else if route.name === 'operationDetail' && selectedEntity && selectedOperation}
-          <OperationDetailPage entity={selectedEntity} operation={selectedOperation} />
+          <OperationDetailPage entity={selectedEntity} operation={selectedOperation} fieldOrder={(entityViewModel.detail?.fields ?? []).map((field) => field.columnName)} components={entityViewModel.detail?.components ?? {}} />
         {:else if route.name === 'recent'}
           <RecentPage viewModel={recentViewModel} onOpen={openRecent} />
         {:else if route.name === 'profile'}
           <ProfilePage />
         {:else if route.name === 'connections'}
           <ConnectionPage />
+        {:else if route.name === 'servers'}
+          <ServerPage />
         {/if}
       </div>
     </section>

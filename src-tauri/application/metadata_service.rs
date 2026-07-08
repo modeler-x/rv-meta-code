@@ -1,3 +1,4 @@
+use serde_json::Value;
 use tokio_postgres::Row;
 
 use crate::dto::compile_schema_response::CompileSchemaResponse;
@@ -143,9 +144,23 @@ impl MetadataService {
             .collect())
     }
 
-    /// エンティティ詳細＝フィールド一覧＋オペレーション一覧。
+    /// エンティティ詳細＝フィールド一覧＋オペレーション一覧＋$ref 解決用 components。
     pub async fn entity_detail(&self, entity_id: i32) -> Result<EntityDetailDto, AppError> {
         let client = pg::connect(&self.target).await?;
+
+        // このエンティティが属するドキュメントのスキーマ名。
+        // 共通レスポンス（$ref）のマージと components 取得に用いる。
+        let schema: String = client
+            .query_one(
+                "SELECT d.schema_name
+                 FROM rv_meta.openapi_entities e
+                 JOIN rv_meta.openapi_documents d ON d.id = e.document_id
+                 WHERE e.id = $1",
+                &[&entity_id],
+            )
+            .await
+            .map_err(db_err)?
+            .get(0);
 
         let field_rows = client
             .query(
@@ -159,21 +174,33 @@ impl MetadataService {
             .await
             .map_err(db_err)?;
 
+        // ドキュメント生成時と同じく共通レスポンス（$ref）を各オペレーションにマージして返す。
+        // これによりオペレーション詳細でエラーレスポンスも参照できる。
         let operation_rows = client
             .query(
                 "SELECT id, entity_id, operation, method, path, summary, description,
-                        parameters, request_body, responses, required_fields
+                        parameters, request_body,
+                        rv_meta._get_openapi_common_responses($2) || responses,
+                        required_fields
                  FROM rv_meta.openapi_operations
                  WHERE entity_id = $1
                  ORDER BY id",
-                &[&entity_id],
+                &[&entity_id, &schema],
             )
             .await
             .map_err(db_err)?;
 
+        // $ref（responses/schemas/securitySchemes）解決のため components をそのまま渡す。
+        let components: Value = client
+            .query_one("SELECT rv_meta._get_openapi_components($1)", &[&schema])
+            .await
+            .map_err(db_err)?
+            .get(0);
+
         Ok(EntityDetailDto {
             fields: field_rows.iter().map(field_from_row).collect(),
             operations: operation_rows.iter().map(operation_from_row).collect(),
+            components,
         })
     }
 

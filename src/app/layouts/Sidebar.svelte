@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Database, FileText, History, Home, Table2, UserRound } from 'lucide-svelte';
+  import { Database, FileText, History, Home, Server, Table2, UserRound } from 'lucide-svelte';
   import type { AppRoute, AppRouteName } from '@/app/router/AppRoute';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
   export let route: AppRoute;
@@ -29,5 +29,6 @@
   <div class="shrink-0 border-t border-[color:var(--rvc-border)] p-3">
     <button class="flex w-full items-center gap-2 rounded-md px-2 py-2 hover:bg-[color:var(--rvc-hover)]" on:click={() => onNavigate('profile')}><UserRound size={18} /> {$t('guest')}</button>
     <button class="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-2 hover:bg-[color:var(--rvc-hover)]" on:click={() => onNavigate('connections')}><Database size={18} /> {$t('connections')}</button>
+    <button class="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-2 hover:bg-[color:var(--rvc-hover)]" on:click={() => onNavigate('servers')}><Server size={18} /> {$t('sv_servers')}</button>
   </div>
 </aside>

@@ -1,2 +1,3 @@
 // domain module root. Add focused files instead of mixing responsibilities here.
 pub mod connection;
+pub mod server;

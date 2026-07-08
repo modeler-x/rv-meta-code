@@ -1,4 +1,4 @@
-import type { OperationSummary } from '@/modules/operation/types/OperationSummary';
+import type { OpenApiComponents, OperationSummary } from '@/modules/operation/types/OperationSummary';
 
 // rv_meta.openapi_entities の1行（フィールド数/オペレーション数つき）。
 export type EntitySummary = {
@@ -23,8 +23,9 @@ export type EntityField = {
   description: string | null;
 };
 
-// テーブル(エンティティ)詳細＝フィールド一覧＋オペレーション一覧。
+// テーブル(エンティティ)詳細＝フィールド一覧＋オペレーション一覧＋$ref 解決用 components。
 export type EntityDetail = {
   fields: EntityField[];
   operations: OperationSummary[];
+  components: OpenApiComponents;
 };

@@ -13,3 +13,11 @@ body {
 button, input, select { font: inherit; }
 button { cursor: pointer; }
 ::selection { background: transparent; }
+
+/* 検索一致文字のハイライト（黄色・トーンはテーマに追従） */
+.rvc-mark {
+  background-color: var(--rvc-highlight);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}

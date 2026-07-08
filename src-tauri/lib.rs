@@ -21,6 +21,10 @@ use crate::commands::metadata::entity_detail::get_entity_detail;
 use crate::commands::metadata::operation::get_operation;
 use crate::commands::metadata::schemas::list_schemas;
 use crate::commands::schema::compile::compile_schema;
+use crate::commands::server::delete::delete_server;
+use crate::commands::server::list::list_servers;
+use crate::commands::server::save::save_server;
+use crate::commands::server::test::test_server;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -52,7 +56,11 @@ pub fn run() {
             list_documents,
             list_entities,
             get_entity_detail,
-            get_operation
+            get_operation,
+            list_servers,
+            save_server,
+            delete_server,
+            test_server
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

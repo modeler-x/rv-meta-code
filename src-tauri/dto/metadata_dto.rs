@@ -89,10 +89,12 @@ pub struct OperationDto {
     pub required_fields: Vec<String>,
 }
 
-/// テーブル(エンティティ)詳細＝フィールド一覧＋オペレーション一覧。
+/// テーブル(エンティティ)詳細＝フィールド一覧＋オペレーション一覧＋$ref 解決用 components。
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EntityDetailDto {
     pub fields: Vec<FieldDto>,
     pub operations: Vec<OperationDto>,
+    /// components オブジェクト（schemas / responses / securitySchemes）。UI が $ref 解決に使う。
+    pub components: Value,
 }

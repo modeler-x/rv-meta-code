@@ -31,7 +31,7 @@ class FakeEntityRepo implements IEntityRepository {
     ]);
   }
   async getEntityDetail(): Promise<Result<EntityDetail>> {
-    return ok({ fields: [], operations: [] });
+    return ok({ fields: [], operations: [], components: {} });
   }
 }
 
