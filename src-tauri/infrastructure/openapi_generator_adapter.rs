@@ -233,6 +233,9 @@ fn build_generate_args(request: &GenerateSdkRequest, spec_path: &str, output_dir
         request.language.clone(),
         "-o".to_string(),
         output_dir.to_string(),
+        // OpenAPI Generator の spec 検証は無効化する。生成前に自前の OpenApiValidator で
+        // 検証済みであり、Generator 側は x- 拡張等の非標準フィールドに過度に厳格なため。
+        "--skip-validate-spec".to_string(),
     ];
     if !props_str.is_empty() {
         args.push("--additional-properties".to_string());
@@ -398,9 +401,10 @@ mod tests {
         assert_eq!(args[4], "typescript-fetch");
         assert_eq!(args[5], "-o");
         assert_eq!(args[6], "/tmp/out");
-        assert_eq!(args[7], "--additional-properties");
-        assert!(args[8].contains("npmName=rv-sdk"));
-        assert!(args[8].contains("npmVersion=1.2.3"));
+        assert!(args.contains(&"--skip-validate-spec".to_string()));
+        let props_index = args.iter().position(|a| a == "--additional-properties").unwrap();
+        assert!(args[props_index + 1].contains("npmName=rv-sdk"));
+        assert!(args[props_index + 1].contains("npmVersion=1.2.3"));
     }
 
     #[test]

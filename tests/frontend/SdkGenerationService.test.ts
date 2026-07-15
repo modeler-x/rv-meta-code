@@ -47,6 +47,9 @@ class FakeRepo implements ISdkGenerationRepository {
     this.generateCalls += 1;
     return this.generateResult;
   }
+  async pickOutputDirectory(_current: string): Promise<Result<string | null>> {
+    return ok('/picked/dir');
+  }
 }
 
 describe('SdkGenerationService', () => {

@@ -8,6 +8,11 @@ import type {
 export class SdkGenerationService {
   constructor(private readonly repository: ISdkGenerationRepository) {}
 
+  /** OS フォルダー選択ダイアログを開く。選択パス（キャンセル時 null）を返す。 */
+  async pickOutputDirectory(current: string): Promise<Result<string | null>> {
+    return this.repository.pickOutputDirectory(current);
+  }
+
   /**
    * 処理順を固定する: OpenAPI取得 → Validation → Validation成功時だけ生成 → 結果。
    * 検証不合格なら生成を開始しない。

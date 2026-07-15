@@ -14,6 +14,8 @@ export interface ISdkGenerationRepository {
   getOpenApiDocument(schema: string): Promise<Result<OpenApiDocument>>;
   validateOpenApi(schema: string): Promise<Result<ValidationReport>>;
   generateSdk(request: GenerateSdkRequest): Promise<Result<GenerateSdkResult>>;
+  /** OS のフォルダー選択ダイアログを開く。キャンセル時は null。 */
+  pickOutputDirectory(current: string): Promise<Result<string | null>>;
 }
 
 export class SdkGenerationRepository implements ISdkGenerationRepository {
@@ -44,6 +46,21 @@ export class SdkGenerationRepository implements ISdkGenerationRepository {
       const shape = error as { code?: string; message?: string } | null;
       const code = shape && typeof shape.code === 'string' ? shape.code : 'IPC_ERROR';
       return fail<GenerateSdkResult>(code, toIpcErrorMessage(error));
+    }
+  }
+
+  async pickOutputDirectory(current: string): Promise<Result<string | null>> {
+    try {
+      // 動的 import で vitest（非Tauri環境）でのロード失敗を避ける。
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        defaultPath: current.trim() === '' ? undefined : current
+      });
+      return ok(typeof selected === 'string' ? selected : null);
+    } catch (error) {
+      return fail<string | null>('IPC_ERROR', toIpcErrorMessage(error));
     }
   }
 }

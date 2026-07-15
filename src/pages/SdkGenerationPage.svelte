@@ -14,6 +14,18 @@
 
   const inputClass =
     'w-full rounded-md border border-[color:var(--rvc-border)] bg-white px-3 py-1.5 text-sm';
+
+  let copied = $state(false);
+  async function copyError(): Promise<void> {
+    const text = `${viewModel.errorCode ?? ''}\n${viewModel.errorMessage ?? ''}`.trim();
+    try {
+      await navigator.clipboard.writeText(text);
+      copied = true;
+      setTimeout(() => (copied = false), 1500);
+    } catch {
+      // クリップボード不可の場合はテキスト選択で対応してもらう。
+    }
+  }
 </script>
 
 <div class="mb-6 flex items-center gap-3">
@@ -45,10 +57,17 @@
     <span class="mb-1 block text-xs text-[color:var(--rvc-muted)]">{$t('sdk_package_version')}</span>
     <input class={inputClass} bind:value={viewModel.packageVersion} />
   </label>
-  <label class="block">
+  <div class="block">
     <span class="mb-1 block text-xs text-[color:var(--rvc-muted)]">{$t('sdk_output_dir')}</span>
-    <input class={inputClass} placeholder="/absolute/path/to/output" bind:value={viewModel.outputDirectory} />
-  </label>
+    <div class="flex gap-2">
+      <input class={inputClass} placeholder="/absolute/path/to/output" bind:value={viewModel.outputDirectory} />
+      <button
+        class="shrink-0 rounded-md border border-[color:var(--rvc-border)] px-3 py-1.5 text-sm font-semibold"
+        onclick={() => viewModel.pickOutputDirectory()}
+      >{$t('sdk_browse')}</button>
+    </div>
+    <p class="mt-1 text-[11px] leading-5 text-[color:var(--rvc-muted)]">{$t('sdk_naming_guide')}</p>
+  </div>
 
   <button
     class="rounded-md bg-[color:var(--rvc-accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
@@ -88,9 +107,16 @@
 
 {#if viewModel.phase === 'error'}
   <div class="mt-6 rounded-md border border-[color:#e5484d] bg-[color:#fff5f5] p-3">
-    <p class="text-sm font-semibold text-[color:#e5484d]">{$t('sdk_error')}</p>
-    {#if viewModel.errorCode}<p class="font-mono text-[11px] text-[color:var(--rvc-muted)]">{viewModel.errorCode}</p>{/if}
-    <p class="text-xs">{viewModel.errorMessage}</p>
+    <div class="flex items-center gap-2">
+      <p class="text-sm font-semibold text-[color:#e5484d]">{$t('sdk_error')}</p>
+      <span class="flex-1"></span>
+      <button
+        class="rounded border border-[color:var(--rvc-border)] bg-white px-2 py-0.5 text-[11px] font-semibold"
+        onclick={() => copyError()}
+      >{copied ? $t('sdk_copied') : $t('sdk_copy')}</button>
+    </div>
+    {#if viewModel.errorCode}<p class="mt-1 select-text font-mono text-[11px] text-[color:var(--rvc-muted)]">{viewModel.errorCode}</p>{/if}
+    <pre class="mt-1 max-h-64 select-text overflow-auto whitespace-pre-wrap break-words text-xs">{viewModel.errorMessage}</pre>
   </div>
 {/if}
 
