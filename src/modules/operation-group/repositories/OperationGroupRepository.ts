@@ -7,14 +7,17 @@ import type {
 } from '@/modules/operation-group/types/OperationGroupSummary';
 
 export interface IOperationGroupRepository {
-  listOperationGroups(schema: string): Promise<Result<OperationGroupSummary[]>>;
+  listOperationGroups(schema?: string): Promise<Result<OperationGroupSummary[]>>;
   getOperationGroupDetail(schema: string, groupKey: string): Promise<Result<OperationGroupDetail>>;
 }
 
 export class OperationGroupRepository implements IOperationGroupRepository {
-  async listOperationGroups(schema: string): Promise<Result<OperationGroupSummary[]>> {
+  async listOperationGroups(schema?: string): Promise<Result<OperationGroupSummary[]>> {
     try {
-      return ok(await invokeTauri<OperationGroupSummary[]>('list_operation_groups', { schema }));
+      // schema 省略時は全スキーマ横断（Functions のトップレベル一覧）。
+      return ok(
+        await invokeTauri<OperationGroupSummary[]>('list_operation_groups', { schema: schema ?? null })
+      );
     } catch (error) {
       return fail<OperationGroupSummary[]>('IPC_ERROR', toIpcErrorMessage(error));
     }

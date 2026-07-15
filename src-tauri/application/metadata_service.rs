@@ -70,7 +70,7 @@ impl MetadataService {
 
     pub async fn list_operation_groups(
         &self,
-        schema: &str,
+        schema: Option<&str>,
     ) -> Result<Vec<OperationGroupSummaryDto>, AppError> {
         self.repository.list_operation_groups(schema).await
     }

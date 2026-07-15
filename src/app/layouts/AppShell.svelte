@@ -20,6 +20,8 @@
   import ProfilePage from '@/pages/ProfilePage.svelte';
   import ConnectionPage from '@/pages/ConnectionPage.svelte';
   import ServerPage from '@/pages/ServerPage.svelte';
+  import FunctionListPage from '@/pages/FunctionListPage.svelte';
+  import HelpPage from '@/pages/HelpPage.svelte';
   import { SchemaViewModel } from '@/modules/schema/viewmodels/SchemaViewModel.svelte';
   import { DocumentViewModel } from '@/modules/document/viewmodels/DocumentViewModel.svelte';
   import { EntityViewModel } from '@/modules/entity/viewmodels/EntityViewModel.svelte';
@@ -66,6 +68,7 @@
     if (name === 'schema') void schemaViewModel.loadSchemas();
     if (name === 'documents') void documentViewModel.loadDocuments();
     if (name === 'entities') void entityViewModel.loadEntities();
+    if (name === 'functions') void operationGroupViewModel.loadGroups();
   }
   function openEntity(entityId: string, backRoute: AppRoute = { name: 'entities' }): void {
     route = appProvider.routeService.createEntityRoute(entityId, backRoute);
@@ -133,10 +136,10 @@
   const selectedEntity = $derived(entityViewModel.findEntity(route.entityId));
   const selectedDocument = $derived(documentViewModel.findDocument(route.documentId));
   const selectedOperation = $derived(entityViewModel.detail?.operations.find((operation) => String(operation.id) === route.operationRowId));
-  const selectedGroup = $derived(operationGroupViewModel.findGroup(route.groupKey));
+  const selectedGroup = $derived(operationGroupViewModel.findGroup(route.groupKey, route.schemaName));
   const selectedFunctionOperation = $derived(operationGroupViewModel.findOperation(route.operationRowId));
   const connectionLabel = $derived(currentConnection ? `${currentConnection.database} / ${currentConnection.host}` : $t('no_connection'));
-  const titleMap = $derived({ welcome: $t('title_welcome'), schema: $t('title_schemas'), documents: $t('title_documents'), documentDetail: selectedDocument?.title ?? $t('title_documents'), entities: $t('title_entities'), entityDetail: selectedEntity?.tableName ?? '', operationDetail: selectedOperation?.path ?? $t('sec_operations'), operationGroupDetail: selectedGroup?.displayName ?? $t('title_operation_group'), functionOperationDetail: selectedFunctionOperation?.path ?? $t('sec_operations'), sdkGeneration: $t('title_sdk'), components: $t('title_components'), recent: $t('title_recent'), profile: $t('title_profile'), connections: $t('title_connections'), servers: $t('title_servers') });
+  const titleMap = $derived({ welcome: $t('title_welcome'), schema: $t('title_schemas'), documents: $t('title_documents'), documentDetail: selectedDocument?.title ?? $t('title_documents'), entities: $t('title_entities'), entityDetail: selectedEntity?.tableName ?? '', functions: $t('title_functions'), help: $t('title_help'), operationDetail: selectedOperation?.path ?? $t('sec_operations'), operationGroupDetail: selectedGroup?.displayName ?? $t('title_operation_group'), functionOperationDetail: selectedFunctionOperation?.path ?? $t('sec_operations'), sdkGeneration: $t('title_sdk'), components: $t('title_components'), recent: $t('title_recent'), profile: $t('title_profile'), connections: $t('title_connections'), servers: $t('title_servers') });
   const title = $derived(titleMap[route.name]);
 </script>
 
@@ -164,6 +167,10 @@
           <EntityDetailPage entity={selectedEntity} fields={entityViewModel.detail?.fields ?? []} operations={entityViewModel.detail?.operations ?? []} relations={entityViewModel.detail?.relations ?? []} onOpenOperation={(operationId) => openOperation(selectedEntity.id.toString(), operationId)} onToggleReadOnly={(isReadOnly) => entityViewModel.toggleReadOnly(selectedEntity, isReadOnly)} isReadOnlyUpdating={entityViewModel.isReadOnlyUpdating} />
         {:else if route.name === 'operationDetail' && selectedEntity && selectedOperation}
           <OperationDetailPage entity={selectedEntity} operation={selectedOperation} fieldOrder={(entityViewModel.detail?.fields ?? []).map((field) => field.columnName)} components={entityViewModel.detail?.components ?? {}} />
+        {:else if route.name === 'functions'}
+          <FunctionListPage viewModel={operationGroupViewModel} onOpenGroup={(schemaName, groupKey) => openOperationGroup(schemaName, groupKey, { name: 'functions' })} />
+        {:else if route.name === 'help'}
+          <HelpPage />
         {:else if route.name === 'operationGroupDetail' && selectedGroup}
           <OperationGroupDetailPage group={selectedGroup} operations={operationGroupViewModel.detail?.operations ?? []} isLoading={operationGroupViewModel.isDetailLoading} onOpenOperation={(operationRowId) => openFunctionOperation(route.schemaName ?? '', route.groupKey ?? '', operationRowId, route)} />
         {:else if route.name === 'functionOperationDetail' && selectedFunctionOperation}

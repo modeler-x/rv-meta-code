@@ -4,14 +4,15 @@ use crate::commands::metadata::build_service;
 use crate::dto::operation_group_dto::OperationGroupSummaryDto;
 use crate::errors::app_error::AppError;
 
-/// スキーマ内の Operation Group 一覧（Operation 件数つき）を返す。
+/// Operation Group 一覧（Operation 件数つき）を返す。
+/// schema 省略時は全スキーマ横断（Functions のトップレベル一覧用）。
 #[tauri::command]
 pub async fn list_operation_groups(
     app: AppHandle,
-    schema: String,
+    schema: Option<String>,
 ) -> Result<Vec<OperationGroupSummaryDto>, AppError> {
-    if schema.trim().is_empty() {
-        return Err(AppError::validation("schema is required"));
-    }
-    build_service(&app)?.list_operation_groups(&schema).await
+    let schema = schema.filter(|s| !s.trim().is_empty());
+    build_service(&app)?
+        .list_operation_groups(schema.as_deref())
+        .await
 }

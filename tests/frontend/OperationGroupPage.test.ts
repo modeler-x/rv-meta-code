@@ -41,6 +41,7 @@ const exampleOperation: OperationSummary = {
 const group: OperationGroupSummary = {
   id: 5,
   documentId: 9,
+  schemaName: 'rv_example',
   groupKey: 'example',
   displayName: 'Example',
   description: null,

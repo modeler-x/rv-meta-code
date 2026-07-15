@@ -2,10 +2,10 @@ export type LanguageCode = 'en' | 'ja';
 
 export const messages = {
   en: {
-    nav_welcome: 'Welcome', nav_schemas: 'Schemas', nav_documents: 'Documents', nav_entities: 'Entities', nav_recent: 'Recent',
+    nav_welcome: 'Welcome', nav_schemas: 'Schemas', nav_documents: 'Documents', nav_entities: 'Entities', nav_functions: 'Functions', nav_recent: 'Recent', nav_help: 'Help',
     guest: 'Guest', connections: 'Connections',
     back: 'Back', open: 'Open', generate: 'Generate', cancel: 'Cancel', save: 'Save', close: 'Close', edit: 'Edit', delete: 'Delete', add: 'Add',
-    title_welcome: 'Welcome', title_schemas: 'Schemas', title_documents: 'Documents', title_entities: 'Entities', title_recent: 'Recent', title_profile: 'Profile', title_connections: 'Connections', title_servers: 'Servers',
+    title_welcome: 'Welcome', title_schemas: 'Schemas', title_documents: 'Documents', title_entities: 'Entities', title_functions: 'Functions', title_help: 'DML annotation reference', help_intro: 'How to declare rv_meta metadata on schemas, functions and tables.', fn_empty: 'No functions (annotated with @openapi) found.', title_recent: 'Recent', title_profile: 'Profile', title_connections: 'Connections', title_servers: 'Servers',
     sv_servers: 'Servers', sv_add: 'Add Server', sv_form_add: 'Add Server', sv_form_edit: 'Edit Server', sv_environment: 'Environment', sv_base_url: 'Base URL', sv_description: 'Description', sv_variables: 'Variables (JSON)', sv_enabled: 'Enabled', sv_disabled: 'Disabled',
     sv_connectivity: 'Connectivity check', sv_health_path: 'Health path', sv_expected_status: 'Expected status', sv_timeout_ms: 'Timeout (ms)', sv_connectivity_hint: 'Resolves server variables with their defaults, then GETs base URL + health path with the timeout, and checks the expected status. Register an absolute base URL to be able to test connectivity.', sv_test: 'Test connectivity', sv_testing: 'Testing…',
     welcome_desc: 'Generate APIs, SDKs and OpenAPI docs straight from your PostgreSQL schema — and keep the metadata in sync.',
@@ -48,10 +48,10 @@ export const messages = {
     gen_err_detail: 'No tables or views were found in schema "{schema}".'
   },
   ja: {
-    nav_welcome: 'ようこそ', nav_schemas: 'スキーマ', nav_documents: 'ドキュメント', nav_entities: 'エンティティ', nav_recent: '最近',
+    nav_welcome: 'ようこそ', nav_schemas: 'スキーマ', nav_documents: 'ドキュメント', nav_entities: 'エンティティ', nav_functions: 'ファンクション', nav_recent: '最近', nav_help: 'ヘルプ',
     guest: 'ゲスト', connections: '接続先',
     back: '戻る', open: '開く', generate: '生成', cancel: 'キャンセル', save: '保存', close: '閉じる', edit: '編集', delete: '削除', add: '追加',
-    title_welcome: 'ようこそ', title_schemas: 'スキーマ', title_documents: 'ドキュメント', title_entities: 'エンティティ', title_recent: '最近', title_profile: 'プロフィール', title_connections: '接続先', title_servers: 'サーバー',
+    title_welcome: 'ようこそ', title_schemas: 'スキーマ', title_documents: 'ドキュメント', title_entities: 'エンティティ', title_functions: 'ファンクション', title_help: 'DML 記述仕様リファレンス', help_intro: 'スキーマ・ファンクション・テーブルへの rv_meta メタデータの宣言方法。', fn_empty: '公開ファンクション（@openapi 付き）がありません。', title_recent: '最近', title_profile: 'プロフィール', title_connections: '接続先', title_servers: 'サーバー',
     sv_servers: 'サーバー', sv_add: 'サーバーを追加', sv_form_add: 'サーバーを追加', sv_form_edit: 'サーバーを編集', sv_environment: '環境', sv_base_url: 'ベースURL', sv_description: '説明', sv_variables: '変数 (JSON)', sv_enabled: '有効', sv_disabled: '無効',
     sv_connectivity: '導通確認', sv_health_path: 'ヘルスパス', sv_expected_status: '期待ステータス', sv_timeout_ms: 'タイムアウト (ms)', sv_connectivity_hint: 'サーバー変数を default で解決し、ベースURL＋ヘルスパスへタイムアウト付きで GET し、期待ステータスと照合します。導通確認するにはベースURLを絶対URLで登録してください。', sv_test: '導通確認', sv_testing: '確認中…',
     welcome_desc: 'PostgreSQL のスキーマから API・SDK・OpenAPI ドキュメントを生成し、メタデータを常に同期します。',

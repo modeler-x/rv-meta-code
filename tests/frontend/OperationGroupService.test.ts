@@ -35,11 +35,11 @@ const exampleOperation: OperationSummary = {
 };
 
 class FakeOperationGroupRepository implements IOperationGroupRepository {
-  async listOperationGroups(schema: string): Promise<Result<OperationGroupSummary[]>> {
+  async listOperationGroups(schema?: string): Promise<Result<OperationGroupSummary[]>> {
     if (schema === 'missing') return fail('IPC_ERROR', 'boom');
     return ok([
-      { id: 1, documentId: 9, groupKey: 'example', displayName: 'Example', description: null, operationCount: 2 },
-      { id: 2, documentId: 9, groupKey: 'orders', displayName: 'Orders', description: 'order ops', operationCount: 1 }
+      { id: 1, documentId: 9, schemaName: 'rv_example', groupKey: 'example', displayName: 'Example', description: null, operationCount: 2 },
+      { id: 2, documentId: 9, schemaName: 'rv_example', groupKey: 'orders', displayName: 'Orders', description: 'order ops', operationCount: 1 }
     ]);
   }
   async getOperationGroupDetail(
@@ -47,7 +47,7 @@ class FakeOperationGroupRepository implements IOperationGroupRepository {
     groupKey: string
   ): Promise<Result<OperationGroupDetail>> {
     return ok({
-      operationGroup: { id: 5, documentId: 9, groupKey, displayName: 'Example', description: null, operationCount: 1 },
+      operationGroup: { id: 5, documentId: 9, schemaName: 'rv_example', groupKey, displayName: 'Example', description: null, operationCount: 1 },
       operations: [exampleOperation],
       components: {}
     });

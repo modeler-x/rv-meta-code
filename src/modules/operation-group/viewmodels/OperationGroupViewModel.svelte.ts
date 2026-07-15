@@ -18,7 +18,7 @@ export class OperationGroupViewModel {
 
   constructor(private readonly operationGroupService: OperationGroupService) {}
 
-  async loadGroups(schema: string): Promise<void> {
+  async loadGroups(schema?: string): Promise<void> {
     this.isGroupsLoading = true;
     this.groupsError = null;
     const result = await this.operationGroupService.loadOperationGroups(schema);
@@ -44,8 +44,11 @@ export class OperationGroupViewModel {
     this.isDetailLoading = false;
   }
 
-  findGroup(groupKey?: string): OperationGroupSummary | undefined {
-    return this.groups.find((group) => group.groupKey === groupKey);
+  findGroup(groupKey?: string, schemaName?: string): OperationGroupSummary | undefined {
+    // 横断一覧では group_key がスキーマ間で重複しうるため、schema も指定できる。
+    return this.groups.find(
+      (group) => group.groupKey === groupKey && (schemaName === undefined || group.schemaName === schemaName)
+    );
   }
 
   /** operationRowId（openapi_operations.id）で Operation を引く。 */

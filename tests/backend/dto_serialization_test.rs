@@ -55,6 +55,7 @@ fn operation_group_summary_serializes_camel_case() {
     let dto = OperationGroupSummaryDto {
         id: 5,
         document_id: 9,
+        schema_name: "rv_auth".to_string(),
         group_key: "auth".to_string(),
         display_name: "Auth".to_string(),
         description: None,
@@ -62,6 +63,7 @@ fn operation_group_summary_serializes_camel_case() {
     };
     let value = serde_json::to_value(dto).unwrap();
     assert_eq!(value["documentId"], json!(9));
+    assert_eq!(value["schemaName"], json!("rv_auth"));
     assert_eq!(value["groupKey"], json!("auth"));
     assert_eq!(value["operationCount"], json!(3));
 }

@@ -9,6 +9,8 @@ use crate::dto::metadata_dto::OperationDto;
 pub struct OperationGroupSummaryDto {
     pub id: i32,
     pub document_id: i32,
+    /// 所属スキーマ名。横断一覧で表示元と詳細取得（schema + group_key）に用いる。
+    pub schema_name: String,
     /// Document 内で安定した識別子（例 auth）。詳細取得の自然キー。
     pub group_key: String,
     /// 表示名（例 Auth）。

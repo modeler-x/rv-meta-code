@@ -8,7 +8,7 @@ import type { Result } from '@/shared/result/Result';
 export class OperationGroupService {
   constructor(private readonly operationGroupRepository: IOperationGroupRepository) {}
 
-  async loadOperationGroups(schema: string): Promise<Result<OperationGroupSummary[]>> {
+  async loadOperationGroups(schema?: string): Promise<Result<OperationGroupSummary[]>> {
     return this.operationGroupRepository.listOperationGroups(schema);
   }
 

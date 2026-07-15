@@ -4,6 +4,7 @@ import type { OpenApiComponents, OperationSummary } from '@/modules/operation/ty
 export type OperationGroupSummary = {
   id: number;
   documentId: number;
+  schemaName: string;
   groupKey: string;
   displayName: string;
   description: string | null;

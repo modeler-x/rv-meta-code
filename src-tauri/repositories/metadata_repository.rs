@@ -434,20 +434,21 @@ impl MetadataRepository {
         })
     }
 
-    /// スキーマ内の Operation Group 一覧（id / documentId / Operation 件数つき）。
+    /// Operation Group 一覧（id / documentId / schema / Operation 件数つき）。
+    /// schema=None なら全スキーマ横断（Functions のトップレベル一覧用）。
     pub async fn list_operation_groups(
         &self,
-        schema: &str,
+        schema: Option<&str>,
     ) -> Result<Vec<OperationGroupSummaryDto>, AppError> {
         let client = pg::connect(&self.target).await?;
         let rows = client
             .query(
-                "SELECT g.id, g.document_id, g.group_key, g.display_name, g.description,
+                "SELECT g.id, g.document_id, d.schema_name, g.group_key, g.display_name, g.description,
                         (SELECT count(*) FROM rv_meta.openapi_operations o WHERE o.operation_group_id = g.id)
                  FROM rv_meta.openapi_operation_groups g
                  JOIN rv_meta.openapi_documents d ON d.id = g.document_id
-                 WHERE d.schema_name = $1
-                 ORDER BY g.group_key",
+                 WHERE ($1::text IS NULL OR d.schema_name = $1)
+                 ORDER BY d.schema_name, g.group_key",
                 &[&schema],
             )
             .await?;
@@ -464,7 +465,7 @@ impl MetadataRepository {
         let client = pg::connect(&self.target).await?;
         let group = client
             .query_opt(
-                "SELECT g.id, g.document_id, g.group_key, g.display_name, g.description,
+                "SELECT g.id, g.document_id, d.schema_name, g.group_key, g.display_name, g.description,
                         (SELECT count(*) FROM rv_meta.openapi_operations o WHERE o.operation_group_id = g.id)
                  FROM rv_meta.openapi_operation_groups g
                  JOIN rv_meta.openapi_documents d ON d.id = g.document_id
@@ -553,10 +554,11 @@ fn operation_group_summary_from_row(row: &Row) -> OperationGroupSummaryDto {
     OperationGroupSummaryDto {
         id: row.get(0),
         document_id: row.get(1),
-        group_key: row.get(2),
-        display_name: row.get(3),
-        description: row.get(4),
-        operation_count: row.get(5),
+        schema_name: row.get(2),
+        group_key: row.get(3),
+        display_name: row.get(4),
+        description: row.get(5),
+        operation_count: row.get(6),
     }
 }
 
