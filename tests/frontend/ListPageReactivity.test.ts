@@ -46,7 +46,7 @@ class FakeEntityRepo implements IEntityRepository {
     ]);
   }
   async getEntityDetail(): Promise<Result<EntityDetail>> {
-    return ok({ fields: [], operations: [], components: {} });
+    return ok({ fields: [], operations: [], relations: [], components: {} });
   }
   async setReadOnly(): Promise<Result<void>> {
     return ok(undefined);

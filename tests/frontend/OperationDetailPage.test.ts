@@ -17,7 +17,7 @@ function baseOperation(overrides: Partial<OperationSummary>): OperationSummary {
     summary: null, description: null, parameters: [], requestBody: null,
     responses: { '204': { description: 'No Content' } }, requiredFields: [],
     effectiveSecurity: [], securitySource: 'root',
-    functionSchema: null, functionName: null, identityArguments: null,
+    functionSchema: null, functionName: null, identityArguments: null, openapiSource: null,
     ...overrides
   };
 }

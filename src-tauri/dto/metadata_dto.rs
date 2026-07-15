@@ -144,6 +144,8 @@ pub struct OperationDto {
     pub function_schema: Option<String>,
     pub function_name: Option<String>,
     pub identity_arguments: Option<String>,
+    /// 生成元関数の COMMENT 原文（@openapi 宣言を含む）。Entity Operation では NULL。
+    pub openapi_source: Option<String>,
 }
 
 /// 1ドキュメント分の OpenAPI 仕様（schema 名 + 完全な OpenAPI JSON）。
@@ -155,12 +157,29 @@ pub struct OpenApiSpecDto {
     pub spec: Value,
 }
 
-/// テーブル(エンティティ)詳細＝フィールド一覧＋オペレーション一覧＋$ref 解決用 components。
+/// FK リレーション（openapi_relations）。エンティティ視点で outgoing / incoming を示す。
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RelationDto {
+    pub constraint_name: String,
+    /// "outgoing"（このエンティティが参照）/ "incoming"（このエンティティが参照される）。
+    pub direction: String,
+    pub relation_kind: String,
+    pub from_schema: Option<String>,
+    pub from_table: Option<String>,
+    pub from_columns: Vec<String>,
+    pub to_table_schema: String,
+    pub to_table_name: String,
+    pub to_columns: Vec<String>,
+}
+
+/// テーブル(エンティティ)詳細＝フィールド一覧＋オペレーション一覧＋リレーション＋$ref 解決用 components。
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EntityDetailDto {
     pub fields: Vec<FieldDto>,
     pub operations: Vec<OperationDto>,
+    pub relations: Vec<RelationDto>,
     /// components オブジェクト（schemas / responses / securitySchemes）。UI が $ref 解決に使う。
     pub components: Value,
 }

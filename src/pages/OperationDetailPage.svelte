@@ -176,6 +176,15 @@
   {/if}
 </SectionList>
 
+{#if operation.openapiSource}
+  {@const marker = operation.openapiSource.indexOf('@openapi')}
+  <SectionList title={$t('op_openapi_source')}>
+    <SectionListRow>
+      <pre class="max-h-72 w-full select-text overflow-auto whitespace-pre-wrap break-words font-mono text-[11px]">{marker >= 0 ? operation.openapiSource.slice(marker) : operation.openapiSource}</pre>
+    </SectionListRow>
+  </SectionList>
+{/if}
+
 {#if pathQueryParams.length}
   <SectionList title={$t('op_params')}>
     {#each pathQueryParams as parameter}

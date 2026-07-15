@@ -26,6 +26,7 @@ fn function_operation() -> OperationDto {
         function_schema: Some("rv_auth".to_string()),
         function_name: Some("get_user".to_string()),
         identity_arguments: Some("p_user_id bigint".to_string()),
+        openapi_source: Some("get user\n@openapi {\"operationId\":\"authGetUser\"}".to_string()),
     }
 }
 

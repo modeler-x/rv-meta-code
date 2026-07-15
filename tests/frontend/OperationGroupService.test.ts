@@ -30,7 +30,8 @@ const exampleOperation: OperationSummary = {
   securitySource: 'operation',
   functionSchema: 'rv_auth',
   functionName: 'get_item',
-  identityArguments: 'p_item_id bigint'
+  identityArguments: 'p_item_id bigint',
+  openapiSource: 'get item\n@openapi {"operationId":"exampleGetItem"}'
 };
 
 class FakeOperationGroupRepository implements IOperationGroupRepository {

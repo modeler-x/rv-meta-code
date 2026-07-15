@@ -5,12 +5,13 @@
   import MethodBadge from '@/shared/components/MethodBadge.svelte';
   import StatusBadge from '@/shared/components/StatusBadge.svelte';
   import BusyOverlay from '@/shared/components/BusyOverlay.svelte';
-  import type { EntitySummary, EntityField } from '@/modules/entity/types/EntitySummary';
+  import type { EntitySummary, EntityField, EntityRelation } from '@/modules/entity/types/EntitySummary';
   import type { OperationSummary } from '@/modules/operation/types/OperationSummary';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
   export let entity: EntitySummary;
   export let fields: EntityField[];
   export let operations: OperationSummary[];
+  export let relations: EntityRelation[] = [];
   export let onOpenOperation: (operationId: string) => void;
   export let onToggleReadOnly: (isReadOnly: boolean) => void = () => {};
   export let isReadOnlyUpdating = false;
@@ -73,5 +74,21 @@
     </SectionListRow>
   {/each}
 </SectionList>
+
+{#if relations.length}
+  <SectionList title={`${$t('sec_relationships')} / ${relations.length}`}>
+    {#each relations as relation}
+      <SectionListRow>
+        <StatusBadge label={relation.direction === 'outgoing' ? $t('rel_outgoing') : $t('rel_incoming')} tone={relation.direction === 'outgoing' ? 'accent' : 'muted'} />
+        <span class="min-w-0 flex-1 font-mono text-xs">
+          {relation.fromSchema ?? '?'}.{relation.fromTable ?? '?'}({relation.fromColumns.join(', ')})
+          <span class="text-[color:var(--rvc-muted)]">→</span>
+          {relation.toTableSchema}.{relation.toTableName}({relation.toColumns.join(', ')})
+        </span>
+        <span class="font-mono text-[11px] text-[color:var(--rvc-muted)]">{relation.constraintName}</span>
+      </SectionListRow>
+    {/each}
+  </SectionList>
+{/if}
 
 <BusyOverlay show={isReadOnlyUpdating} label={$t('busy_working')} />

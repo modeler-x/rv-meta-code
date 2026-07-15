@@ -161,7 +161,7 @@
         {:else if route.name === 'entities'}
           <EntityListPage viewModel={entityViewModel} onOpenEntity={(entityId) => openEntity(entityId)} />
         {:else if route.name === 'entityDetail' && selectedEntity}
-          <EntityDetailPage entity={selectedEntity} fields={entityViewModel.detail?.fields ?? []} operations={entityViewModel.detail?.operations ?? []} onOpenOperation={(operationId) => openOperation(selectedEntity.id.toString(), operationId)} onToggleReadOnly={(isReadOnly) => entityViewModel.toggleReadOnly(selectedEntity, isReadOnly)} isReadOnlyUpdating={entityViewModel.isReadOnlyUpdating} />
+          <EntityDetailPage entity={selectedEntity} fields={entityViewModel.detail?.fields ?? []} operations={entityViewModel.detail?.operations ?? []} relations={entityViewModel.detail?.relations ?? []} onOpenOperation={(operationId) => openOperation(selectedEntity.id.toString(), operationId)} onToggleReadOnly={(isReadOnly) => entityViewModel.toggleReadOnly(selectedEntity, isReadOnly)} isReadOnlyUpdating={entityViewModel.isReadOnlyUpdating} />
         {:else if route.name === 'operationDetail' && selectedEntity && selectedOperation}
           <OperationDetailPage entity={selectedEntity} operation={selectedOperation} fieldOrder={(entityViewModel.detail?.fields ?? []).map((field) => field.columnName)} components={entityViewModel.detail?.components ?? {}} />
         {:else if route.name === 'operationGroupDetail' && selectedGroup}

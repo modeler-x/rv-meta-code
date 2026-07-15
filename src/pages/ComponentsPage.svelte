@@ -22,6 +22,19 @@
     return 'muted';
   }
 
+  // 展開して定義JSONを表示している component のキー。
+  let expanded = $state<Set<string>>(new Set());
+  function keyOf(component: ComponentSummary): string {
+    return `${component.section}/${component.name}`;
+  }
+  function toggle(component: ComponentSummary): void {
+    const key = keyOf(component);
+    const next = new Set(expanded);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    expanded = next;
+  }
+
   // 定義の要点（schema=type/$ref、response=description、securityScheme=type/scheme）。
   function summary(component: ComponentSummary): string {
     const def = component.definition;
@@ -62,7 +75,7 @@
   <div class="mt-4"></div>
   <SectionList title={`${section.label} / ${rows.length}`}>
     {#each rows as component}
-      <SectionListRow>
+      <SectionListRow isButton on:click={() => toggle(component)}>
         <span class="min-w-0 flex-1">
           <span class="flex items-center gap-2">
             <span class="font-mono text-sm font-semibold">{component.name}</span>
@@ -71,7 +84,13 @@
           </span>
           <span class="block font-mono text-[11px] text-[color:var(--rvc-muted)]">{summary(component)}</span>
         </span>
+        <span class="text-[11px] text-[color:var(--rvc-muted)]">{expanded.has(keyOf(component)) ? '▾' : '▸'}</span>
       </SectionListRow>
+      {#if expanded.has(keyOf(component))}
+        <SectionListRow>
+          <pre class="max-h-80 w-full select-text overflow-auto whitespace-pre-wrap break-words font-mono text-[11px]">{JSON.stringify(component.definition, null, 2)}</pre>
+        </SectionListRow>
+      {/if}
     {/each}
     {#if rows.length === 0}
       <div class="px-4 py-4 text-sm text-[color:var(--rvc-muted)]">{$t('search_no_match')}</div>

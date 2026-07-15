@@ -63,4 +63,6 @@ export type OperationSummary = {
   functionSchema: string | null;
   functionName: string | null;
   identityArguments: string | null;
+  // 生成元関数の COMMENT 原文（@openapi 宣言を含む）。Entity では null。
+  openapiSource: string | null;
 };

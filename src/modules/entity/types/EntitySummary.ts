@@ -25,9 +25,23 @@ export type EntityField = {
   description: string | null;
 };
 
-// テーブル(エンティティ)詳細＝フィールド一覧＋オペレーション一覧＋$ref 解決用 components。
+// FK リレーション（openapi_relations）。エンティティ視点で outgoing / incoming。
+export type EntityRelation = {
+  constraintName: string;
+  direction: 'outgoing' | 'incoming';
+  relationKind: string;
+  fromSchema: string | null;
+  fromTable: string | null;
+  fromColumns: string[];
+  toTableSchema: string;
+  toTableName: string;
+  toColumns: string[];
+};
+
+// テーブル(エンティティ)詳細＝フィールド一覧＋オペレーション一覧＋リレーション＋$ref 解決用 components。
 export type EntityDetail = {
   fields: EntityField[];
   operations: OperationSummary[];
+  relations: EntityRelation[];
   components: OpenApiComponents;
 };

@@ -6,7 +6,7 @@ use std::collections::HashSet;
 
 use crate::dto::metadata_dto::{
     ComponentSummaryDto, DocumentDetailDto, DocumentDto, EntityDetailDto, EntitySummaryDto, FieldDto,
-    OpenApiSpecDto, OperationDto, SchemaSummaryDto,
+    OpenApiSpecDto, OperationDto, RelationDto, SchemaSummaryDto,
 };
 use crate::dto::operation_group_dto::{OperationGroupDetailDto, OperationGroupSummaryDto};
 use crate::errors::app_error::AppError;
@@ -35,7 +35,15 @@ const OPERATION_SELECT: &str = "
            CASE WHEN o.security IS NULL THEN 'root'
                 WHEN jsonb_array_length(o.security) = 0 THEN 'public'
                 ELSE 'operation' END,
-           fb.function_schema, fb.function_name, fb.identity_arguments
+           fb.function_schema, fb.function_name, fb.identity_arguments,
+           (SELECT d.description
+            FROM pg_proc p
+            JOIN pg_namespace n ON n.oid = p.pronamespace
+            JOIN pg_description d ON d.objoid = p.oid AND d.classoid = 'pg_proc'::regclass
+            WHERE fb.function_schema IS NOT NULL
+              AND n.nspname = fb.function_schema
+              AND p.proname = fb.function_name
+              AND pg_get_function_identity_arguments(p.oid) = fb.identity_arguments)
     FROM rv_meta.openapi_operations o
     LEFT JOIN rv_meta.openapi_entities e ON e.id = o.entity_id
     LEFT JOIN rv_meta.openapi_function_bindings fb ON fb.operation_id = o.id
@@ -308,6 +316,20 @@ impl MetadataRepository {
             )
             .await?;
 
+        let relation_rows = client
+            .query(
+                "SELECT r.constraint_name, r.relation_kind,
+                        fe.table_schema, fe.table_name, r.from_columns,
+                        r.to_table_schema, r.to_table_name, r.to_columns,
+                        CASE WHEN r.from_entity_id = $1 THEN 'outgoing' ELSE 'incoming' END
+                 FROM rv_meta.openapi_relations r
+                 LEFT JOIN rv_meta.openapi_entities fe ON fe.id = r.from_entity_id
+                 WHERE r.from_entity_id = $1 OR r.to_entity_id = $1
+                 ORDER BY r.constraint_name",
+                &[&entity_id],
+            )
+            .await?;
+
         let components: Value = client
             .query_one("SELECT rv_meta._get_openapi_components($1)", &[&schema])
             .await?
@@ -316,6 +338,7 @@ impl MetadataRepository {
         Ok(EntityDetailDto {
             fields: field_rows.iter().map(field_from_row).collect(),
             operations: operation_rows.iter().map(operation_from_row).collect(),
+            relations: relation_rows.iter().map(relation_from_row).collect(),
             components,
         })
     }
@@ -508,6 +531,21 @@ fn operation_from_row(row: &Row) -> OperationDto {
         function_schema: row.get(18),
         function_name: row.get(19),
         identity_arguments: row.get(20),
+        openapi_source: row.get(21),
+    }
+}
+
+fn relation_from_row(row: &Row) -> RelationDto {
+    RelationDto {
+        constraint_name: row.get(0),
+        relation_kind: row.get(1),
+        from_schema: row.get(2),
+        from_table: row.get(3),
+        from_columns: row.get(4),
+        to_table_schema: row.get(5),
+        to_table_name: row.get(6),
+        to_columns: row.get(7),
+        direction: row.get(8),
     }
 }
 
