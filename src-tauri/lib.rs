@@ -29,6 +29,8 @@ use crate::commands::metadata::set_read_only::set_read_only;
 use crate::commands::metadata::validate_openapi::validate_openapi;
 use crate::commands::schema::compile::compile_schema;
 use crate::commands::sdk::generate::generate_sdk;
+use crate::commands::sdk::list::list_generators;
+use crate::commands::sdk::profiles::{delete_sdk_profile, list_sdk_profiles, save_sdk_profile};
 use crate::commands::server::delete::delete_server;
 use crate::commands::server::list::list_servers;
 use crate::commands::server::save::save_server;
@@ -72,6 +74,10 @@ pub fn run() {
             get_operation_group_detail,
             validate_openapi,
             generate_sdk,
+            list_generators,
+            list_sdk_profiles,
+            save_sdk_profile,
+            delete_sdk_profile,
             set_read_only,
             get_openapi_specs,
             list_servers,

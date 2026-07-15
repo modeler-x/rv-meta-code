@@ -227,12 +227,19 @@ impl<R: CommandRunner> SdkGenerator for OpenApiGeneratorCliAdapter<R> {
 }
 
 /// openapi-generator-cli の generate 引数配列を作る。
-/// package は TypeScript 系の慣例で npmName/npmVersion へ対応づける（明示指定があれば優先）。
+/// package 名/version は generator name の family に応じたキーへ対応づける
+/// （TypeScript=npmName / Python=packageName / Ruby=gemName。明示指定があれば優先）。
 fn build_generate_args(request: &GenerateSdkRequest, spec_path: &str, output_dir: &str) -> Vec<String> {
+    let (_, package_property, version_property) =
+        crate::application::generator_registry::target_properties(&request.generator_name);
     let mut props: BTreeMap<String, String> = request.additional_properties.clone();
-    props.entry("npmName".to_string()).or_insert_with(|| request.package_name.clone());
+    props
+        .entry(package_property.to_string())
+        .or_insert_with(|| request.package_name.clone());
     if let Some(version) = &request.package_version {
-        props.entry("npmVersion".to_string()).or_insert_with(|| version.clone());
+        props
+            .entry(version_property.to_string())
+            .or_insert_with(|| version.clone());
     }
     let props_str = props
         .iter()
@@ -249,7 +256,7 @@ fn build_generate_args(request: &GenerateSdkRequest, spec_path: &str, output_dir
         "-i".to_string(),
         spec_path.to_string(),
         "-g".to_string(),
-        request.language.clone(),
+        request.generator_name.clone(),
         "-o".to_string(),
         output_dir.to_string(),
     ];
@@ -486,11 +493,15 @@ mod tests {
     }
 
     fn request(output_directory: &str) -> GenerateSdkRequest {
+        request_for("typescript-fetch", output_directory)
+    }
+
+    fn request_for(generator_name: &str, output_directory: &str) -> GenerateSdkRequest {
         GenerateSdkRequest {
             generator_id: "openapi-generator-cli".into(),
             schema_name: "rv_auth".into(),
             openapi_document: json!({ "openapi": "3.0.3", "info": { "title": "t", "version": "1" }, "paths": {} }),
-            language: "typescript-fetch".into(),
+            generator_name: generator_name.into(),
             package_name: "rv-sdk".into(),
             package_version: Some("1.2.3".into()),
             output_directory: output_directory.into(),
@@ -513,6 +524,24 @@ mod tests {
         let props_index = args.iter().position(|a| a == "--additional-properties").unwrap();
         assert!(args[props_index + 1].contains("npmName=rv-sdk"));
         assert!(args[props_index + 1].contains("npmVersion=1.2.3"));
+    }
+
+    #[test]
+    fn build_args_maps_package_by_generator_family() {
+        // Python は packageName/packageVersion。
+        let py = build_generate_args(&request_for("python", "/tmp/out"), "/tmp/spec.json", "/tmp/out");
+        assert_eq!(py[4], "python");
+        let py_props = &py[py.iter().position(|a| a == "--additional-properties").unwrap() + 1];
+        assert!(py_props.contains("packageName=rv-sdk"));
+        assert!(py_props.contains("packageVersion=1.2.3"));
+        assert!(!py_props.contains("npmName"));
+
+        // Ruby は gemName/gemVersion。
+        let rb = build_generate_args(&request_for("ruby", "/tmp/out"), "/tmp/spec.json", "/tmp/out");
+        assert_eq!(rb[4], "ruby");
+        let rb_props = &rb[rb.iter().position(|a| a == "--additional-properties").unwrap() + 1];
+        assert!(rb_props.contains("gemName=rv-sdk"));
+        assert!(rb_props.contains("gemVersion=1.2.3"));
     }
 
     #[test]

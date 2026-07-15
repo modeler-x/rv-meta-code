@@ -12,11 +12,16 @@
   } from '@/modules/sdk/generatedFileCategory';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
   import type { MessageKey } from '@/shared/i18n/messages';
+  import { onMount } from 'svelte';
 
   let { viewModel, schema }: { viewModel: SdkGenerationViewModel; schema: string } = $props();
 
-  const generators = ['openapi-generator-cli'];
-  const languages = ['typescript-fetch', 'typescript-axios', 'typescript-node'];
+  // Generator / Profile は Registry / ストアから取得する（UI に固定配列を持たない）。
+  onMount(() => {
+    void viewModel.load();
+  });
+
+  let newProfileName = $state('');
 
   const inputClass =
     'w-full rounded-md border border-[color:var(--rvc-border)] bg-white px-3 py-1.5 text-sm';
@@ -59,16 +64,45 @@
 </div>
 
 <div class="space-y-3">
+  {#if viewModel.profiles.length > 0}
+    <label class="block">
+      <span class="mb-1 block text-xs text-[color:var(--rvc-muted)]">{$t('sdk_profile')}</span>
+      <div class="flex gap-2">
+        <select
+          class={inputClass}
+          value={viewModel.selectedProfileName}
+          onchange={(e) => viewModel.applyProfile((e.currentTarget as HTMLSelectElement).value)}
+        >
+          <option value="">{$t('sdk_profile_none')}</option>
+          {#each viewModel.profiles as profile}
+            <option value={profile.name}>{profile.name}{profile.schemaName ? ` (${profile.schemaName})` : ''}</option>
+          {/each}
+        </select>
+        <button
+          class="shrink-0 rounded-md border border-[color:var(--rvc-border)] px-3 py-1.5 text-sm font-semibold disabled:opacity-50"
+          disabled={viewModel.selectedProfileName === ''}
+          onclick={() => viewModel.deleteProfile(viewModel.selectedProfileName)}
+        >{$t('sdk_profile_delete')}</button>
+      </div>
+    </label>
+  {/if}
   <label class="block">
     <span class="mb-1 block text-xs text-[color:var(--rvc-muted)]">{$t('sdk_generator')}</span>
     <select class={inputClass} bind:value={viewModel.generatorId}>
-      {#each generators as generator}<option value={generator}>{generator}</option>{/each}
+      {#each viewModel.generators as generator}
+        <option value={generator.id}>
+          {generator.displayName}{generator.isAvailable ? (generator.version ? ` — ${generator.version}` : '') : ` — ${$t('sdk_generator_unavailable')}`}
+        </option>
+      {/each}
     </select>
+    {#if viewModel.selectedGenerator && !viewModel.selectedGenerator.isAvailable}
+      <p class="mt-1 text-[11px] text-[color:#e5484d]">{$t('sdk_generator_unavailable_hint')}</p>
+    {/if}
   </label>
   <label class="block">
-    <span class="mb-1 block text-xs text-[color:var(--rvc-muted)]">{$t('sdk_language')}</span>
-    <select class={inputClass} bind:value={viewModel.language}>
-      {#each languages as language}<option value={language}>{language}</option>{/each}
+    <span class="mb-1 block text-xs text-[color:var(--rvc-muted)]">{$t('sdk_target')}</span>
+    <select class={inputClass} bind:value={viewModel.generatorName}>
+      {#each viewModel.targets as target}<option value={target.name}>{target.displayName}</option>{/each}
     </select>
   </label>
   <label class="block">
@@ -91,6 +125,24 @@
     <p class="mt-1 text-[11px] leading-5 text-[color:var(--rvc-muted)]">{$t('sdk_naming_guide')}</p>
     {#if viewModel.pickError}
       <p class="mt-1 select-text text-[11px] text-[color:#e5484d]">{viewModel.pickError}</p>
+    {/if}
+  </div>
+
+  <div class="block">
+    <span class="mb-1 block text-xs text-[color:var(--rvc-muted)]">{$t('sdk_profile_save')}</span>
+    <div class="flex gap-2">
+      <input class={inputClass} placeholder={$t('sdk_profile_name_placeholder')} bind:value={newProfileName} />
+      <button
+        class="shrink-0 rounded-md border border-[color:var(--rvc-border)] px-3 py-1.5 text-sm font-semibold disabled:opacity-50"
+        disabled={newProfileName.trim() === ''}
+        onclick={async () => {
+          await viewModel.saveProfile(newProfileName, schema);
+          if (!viewModel.profileError) newProfileName = '';
+        }}
+      >{$t('sdk_profile_save')}</button>
+    </div>
+    {#if viewModel.profileError}
+      <p class="mt-1 select-text text-[11px] text-[color:#e5484d]">{viewModel.profileError}</p>
     {/if}
   </div>
 

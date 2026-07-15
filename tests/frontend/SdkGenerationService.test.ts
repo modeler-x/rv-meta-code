@@ -6,13 +6,15 @@ import { ok, fail, type Result } from '@/shared/result/Result';
 import type {
   GenerateSdkRequest,
   GenerateSdkResult,
+  GeneratorDescriptor,
   OpenApiDocument,
+  SdkGenerationProfile,
   ValidationReport
 } from '@/modules/sdk/types/SdkGeneration';
 
 const form = {
   generatorId: 'openapi-generator-cli',
-  language: 'typescript-fetch',
+  generatorName: 'typescript-fetch',
   packageName: 'rv-sdk',
   packageVersion: '1.0.0',
   outputDirectory: '/tmp/out'
@@ -46,6 +48,28 @@ class FakeRepo implements ISdkGenerationRepository {
   async generateSdk(_request: GenerateSdkRequest): Promise<Result<GenerateSdkResult>> {
     this.generateCalls += 1;
     return this.generateResult;
+  }
+  async listGenerators(): Promise<Result<GeneratorDescriptor[]>> {
+    return ok([
+      {
+        id: 'openapi-generator-cli',
+        displayName: 'OpenAPI Generator CLI',
+        isAvailable: true,
+        version: '7.0.0',
+        targets: [
+          { name: 'typescript-fetch', displayName: 'TypeScript (fetch)', family: 'typescript', packageProperty: 'npmName', versionProperty: 'npmVersion' }
+        ]
+      }
+    ]);
+  }
+  async listProfiles(): Promise<Result<SdkGenerationProfile[]>> {
+    return ok([]);
+  }
+  async saveProfile(profile: SdkGenerationProfile): Promise<Result<SdkGenerationProfile[]>> {
+    return ok([profile]);
+  }
+  async deleteProfile(_name: string): Promise<Result<SdkGenerationProfile[]>> {
+    return ok([]);
   }
   async pickOutputDirectory(_current: string): Promise<Result<string | null>> {
     return ok('/picked/dir');
@@ -107,5 +131,42 @@ describe('SdkGenerationViewModel phases', () => {
     await vm.run('rv_auth');
     expect(vm.phase).toBe('error');
     expect(vm.errorCode).toBe('GENERATOR_NOT_AVAILABLE');
+  });
+});
+
+describe('SdkGenerationViewModel generators and profiles', () => {
+  it('loads generators from the registry and exposes their targets', async () => {
+    const vm = new SdkGenerationViewModel(new SdkGenerationService(new FakeRepo(validReport)));
+    await vm.load();
+    expect(vm.generators.length).toBe(1);
+    expect(vm.selectedGenerator?.id).toBe('openapi-generator-cli');
+    expect(vm.targets.map((tgt) => tgt.name)).toContain('typescript-fetch');
+  });
+
+  it('snaps generatorName to the first target when the current one is unsupported', async () => {
+    const vm = new SdkGenerationViewModel(new SdkGenerationService(new FakeRepo(validReport)));
+    vm.generatorName = 'ruby'; // not in the fake generator's targets
+    await vm.load();
+    expect(vm.generatorName).toBe('typescript-fetch');
+  });
+
+  it('saves the current form as a profile and applies it back', async () => {
+    const vm = new SdkGenerationViewModel(new SdkGenerationService(new FakeRepo(validReport)));
+    vm.packageName = '@robovill/rv-auth-sdk';
+    vm.outputDirectory = '/tmp/out';
+    await vm.saveProfile('Auth TS', 'rv_auth');
+    expect(vm.profiles.map((p) => p.name)).toContain('Auth TS');
+
+    vm.packageName = 'changed';
+    vm.applyProfile('Auth TS');
+    expect(vm.packageName).toBe('@robovill/rv-auth-sdk');
+    expect(vm.selectedProfileName).toBe('Auth TS');
+  });
+
+  it('rejects an empty profile name', async () => {
+    const vm = new SdkGenerationViewModel(new SdkGenerationService(new FakeRepo(validReport)));
+    await vm.saveProfile('   ', 'rv_auth');
+    expect(vm.profileError).not.toBeNull();
+    expect(vm.profiles.length).toBe(0);
   });
 });

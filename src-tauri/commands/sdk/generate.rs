@@ -1,65 +1,39 @@
 use crate::application::facade_generator::{FacadeGenerator, FacadeRequest};
+use crate::application::generator_registry::GeneratorRegistry;
 use crate::application::openapi_validator::{DefaultOpenApiValidator, OpenApiValidator};
-use crate::application::sdk_generator::SdkGenerator;
 use crate::dto::sdk_dto::{GenerateSdkRequest, GenerateSdkResult};
 use crate::errors::app_error::AppError;
-use crate::infrastructure::openapi_generator_adapter::{
-    OpenApiGeneratorCliAdapter, SystemCommandRunner,
-};
+use crate::infrastructure::default_generator_registry::DefaultGeneratorRegistry;
 use crate::infrastructure::typescript_facade_generator::TypeScriptFacadeGenerator;
 
-const SUPPORTED_GENERATOR: &str = "openapi-generator-cli";
-
-/// 実行する CLI プログラムを解決する。
-/// 1. env RV_OPENAPI_GENERATOR_CLI（絶対パス等）
-/// 2. ローカル node_modules/.bin（dev の CWD 直下 or src-tauri から一つ上）
-/// 3. PATH 上の openapi-generator-cli
-fn resolve_generator_program() -> String {
-    if let Ok(program) = std::env::var("RV_OPENAPI_GENERATOR_CLI") {
-        log::info!("generate_sdk: program from env RV_OPENAPI_GENERATOR_CLI = {program}");
-        return program;
-    }
-    for candidate in [
-        "node_modules/.bin/openapi-generator-cli",
-        "../node_modules/.bin/openapi-generator-cli",
-    ] {
-        if std::path::Path::new(candidate).exists() {
-            let resolved = std::fs::canonicalize(candidate)
-                .map(|p| p.to_string_lossy().to_string())
-                .unwrap_or_else(|_| candidate.to_string());
-            log::info!("generate_sdk: program resolved to local bin = {resolved}");
-            return resolved;
-        }
-    }
-    log::info!("generate_sdk: program falling back to PATH = {SUPPORTED_GENERATOR}");
-    SUPPORTED_GENERATOR.to_string()
-}
-
 /// SDK を生成する。処理順: 入力検証 → OpenAPI 検証 → Generator 実行。
-/// 不正な OpenAPI からは生成を開始しない。Generator 固有処理は Adapter に閉じ込める。
+/// 不正な OpenAPI からは生成を開始しない。Generator は Registry から解決し、固有処理は Adapter に閉じ込める。
 #[tauri::command]
 pub async fn generate_sdk(request: GenerateSdkRequest) -> Result<GenerateSdkResult, AppError> {
     log::info!(
-        "generate_sdk start: schema={} generator={} language={} output={}",
+        "generate_sdk start: schema={} generator={} target={} output={}",
         request.schema_name,
         request.generator_id,
-        request.language,
+        request.generator_name,
         request.output_directory
     );
 
     if request.schema_name.trim().is_empty()
-        || request.language.trim().is_empty()
+        || request.generator_name.trim().is_empty()
         || request.package_name.trim().is_empty()
         || request.output_directory.trim().is_empty()
     {
         return Err(AppError::validation(
-            "schemaName, language, packageName and outputDirectory are required",
+            "schemaName, generatorName, packageName and outputDirectory are required",
         ));
     }
-    if request.generator_id != SUPPORTED_GENERATOR {
+
+    // Adapter は Registry から解決する（未登録は NOT_AVAILABLE）。
+    let registry = DefaultGeneratorRegistry::new();
+    if registry.generator(&request.generator_id).is_none() {
         return Err(AppError::generator_not_available(&format!(
-            "unsupported generator \"{}\" (only {} is available)",
-            request.generator_id, SUPPORTED_GENERATOR
+            "unsupported generator \"{}\"",
+            request.generator_id
         )));
     }
 
@@ -89,19 +63,19 @@ pub async fn generate_sdk(request: GenerateSdkRequest) -> Result<GenerateSdkResu
         )));
     }
 
-    let program = resolve_generator_program();
-    log::info!(
-        "generate_sdk: cwd={:?} PATH={:?}",
-        std::env::current_dir().ok(),
-        std::env::var("PATH").unwrap_or_default()
-    );
-
     // Generator 実行はブロッキング（Process + FS）。専用スレッドで動かす。
     // 標準 SDK 生成に成功したら、TypeScript では Operation Group Facade を追加生成する。
+    let is_typescript = request.generator_name.starts_with("typescript");
     let result = tauri::async_runtime::spawn_blocking(move || {
-        let adapter = OpenApiGeneratorCliAdapter::new(SystemCommandRunner, program, None);
+        let registry = DefaultGeneratorRegistry::new();
+        let adapter = registry
+            .generator(&request.generator_id)
+            .ok_or_else(|| AppError::generator_not_available(&format!(
+                "unsupported generator \"{}\"",
+                request.generator_id
+            )))?;
         let mut generated = adapter.generate(&request)?;
-        if request.language.starts_with("typescript") {
+        if is_typescript {
             let facade = TypeScriptFacadeGenerator::new().generate(&FacadeRequest {
                 openapi_document: request.openapi_document.clone(),
                 output_directory: generated.output_directory.clone(),

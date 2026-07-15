@@ -12,8 +12,8 @@ pub struct GenerateSdkRequest {
     pub schema_name: String,
     /// 検証済みの完全な OpenAPI JSON（不変な入力 Snapshot）。
     pub openapi_document: Value,
-    /// Generator の言語/ジェネレータ名。例: typescript-fetch。
-    pub language: String,
+    /// OpenAPI Generator の generator name（言語ではなく生成器名）。例: typescript-fetch / python / ruby。
+    pub generator_name: String,
     pub package_name: String,
     #[serde(default)]
     pub package_version: Option<String>,
@@ -42,4 +42,33 @@ pub struct GeneratorCapabilities {
     pub generator_id: String,
     pub is_available: bool,
     pub version: Option<String>,
+}
+
+/// Registry が UI へ返す Adapter 記述子。UI は固定配列を持たず、これを一覧化する。
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct GeneratorDescriptor {
+    /// Adapter 識別子。generate 要求の generator_id に対応。例: openapi-generator-cli。
+    pub id: String,
+    pub display_name: String,
+    pub is_available: bool,
+    pub version: Option<String>,
+    /// 対応する生成ターゲット（generator name）一覧。
+    pub targets: Vec<GeneratorTargetDescriptor>,
+}
+
+/// 生成ターゲット（generator name）の記述子。package 命名の family と
+/// additional-properties キーを含み、言語別 config 変換の単一の情報源にする。
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct GeneratorTargetDescriptor {
+    /// generator name。generate 要求の generator_name に対応。例: typescript-fetch。
+    pub name: String,
+    pub display_name: String,
+    /// package 命名の family。例: typescript / python / ruby / generic。
+    pub family: String,
+    /// package 名を渡す additional-property キー。例: npmName / packageName / gemName。
+    pub package_property: String,
+    /// package version を渡す additional-property キー。例: npmVersion / packageVersion / gemVersion。
+    pub version_property: String,
 }

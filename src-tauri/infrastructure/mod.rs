@@ -1,6 +1,8 @@
 // infrastructure module root. Add focused files instead of mixing responsibilities here.
 pub mod crypto;
 pub mod connection_store;
+pub mod default_generator_registry;
 pub mod openapi_generator_adapter;
 pub mod pg;
+pub mod profile_store;
 pub mod typescript_facade_generator;

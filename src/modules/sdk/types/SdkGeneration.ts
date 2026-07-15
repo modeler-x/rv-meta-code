@@ -26,7 +26,7 @@ export type OpenApiDocument = Record<string, unknown>;
 // 画面の入力値。
 export type SdkGenerationForm = {
   generatorId: string;
-  language: string;
+  generatorName: string;
   packageName: string;
   packageVersion: string;
   outputDirectory: string;
@@ -37,11 +37,39 @@ export type GenerateSdkRequest = {
   generatorId: string;
   schemaName: string;
   openapiDocument: OpenApiDocument;
-  language: string;
+  generatorName: string;
   packageName: string;
   packageVersion: string | null;
   outputDirectory: string;
   additionalProperties: Record<string, string>;
+};
+
+// Registry が返す Adapter 記述子（backend GeneratorDescriptor と対応）。
+export type GeneratorTargetDescriptor = {
+  name: string;
+  displayName: string;
+  family: string;
+  packageProperty: string;
+  versionProperty: string;
+};
+
+export type GeneratorDescriptor = {
+  id: string;
+  displayName: string;
+  isAvailable: boolean;
+  version: string | null;
+  targets: GeneratorTargetDescriptor[];
+};
+
+// SDK Generation Profile（backend sdk_profile_dto と対応）。
+export type SdkGenerationProfile = {
+  name: string;
+  schemaName: string | null;
+  generatorId: string;
+  generatorName: string;
+  packageName: string;
+  packageVersion: string | null;
+  outputDirectory: string;
 };
 
 // 生成フローの結果。検証不合格なら生成しない。

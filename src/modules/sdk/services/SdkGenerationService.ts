@@ -1,8 +1,10 @@
 import { ok, fail, type Result } from '@/shared/result/Result';
 import type { ISdkGenerationRepository } from '@/modules/sdk/repositories/SdkGenerationRepository';
 import type {
+  GeneratorDescriptor,
   SdkGenerationForm,
-  SdkGenerationOutcome
+  SdkGenerationOutcome,
+  SdkGenerationProfile
 } from '@/modules/sdk/types/SdkGeneration';
 
 export class SdkGenerationService {
@@ -11,6 +13,22 @@ export class SdkGenerationService {
   /** OS フォルダー選択ダイアログを開く。選択パス（キャンセル時 null）を返す。 */
   async pickOutputDirectory(current: string): Promise<Result<string | null>> {
     return this.repository.pickOutputDirectory(current);
+  }
+
+  async listGenerators(): Promise<Result<GeneratorDescriptor[]>> {
+    return this.repository.listGenerators();
+  }
+
+  async listProfiles(): Promise<Result<SdkGenerationProfile[]>> {
+    return this.repository.listProfiles();
+  }
+
+  async saveProfile(profile: SdkGenerationProfile): Promise<Result<SdkGenerationProfile[]>> {
+    return this.repository.saveProfile(profile);
+  }
+
+  async deleteProfile(name: string): Promise<Result<SdkGenerationProfile[]>> {
+    return this.repository.deleteProfile(name);
   }
 
   /**
@@ -41,7 +59,7 @@ export class SdkGenerationService {
       generatorId: form.generatorId,
       schemaName: schema,
       openapiDocument: documentResult.data,
-      language: form.language,
+      generatorName: form.generatorName,
       packageName: form.packageName,
       packageVersion: form.packageVersion.trim() === '' ? null : form.packageVersion.trim(),
       outputDirectory: form.outputDirectory,
