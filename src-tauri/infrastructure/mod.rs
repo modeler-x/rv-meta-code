@@ -2,6 +2,7 @@
 pub mod crypto;
 pub mod connection_store;
 pub mod default_generator_registry;
+pub mod facade_registry;
 pub mod openapi_generator_adapter;
 pub mod pg;
 pub mod profile_store;

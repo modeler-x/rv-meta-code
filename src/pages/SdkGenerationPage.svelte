@@ -23,8 +23,12 @@
 
   let newProfileName = $state('');
 
+  // input と select で高さを揃える（固定 h-9）。select はネイティブ矢印を残しつつ box 高さを統一。
   const inputClass =
-    'w-full rounded-md border border-[color:var(--rvc-border)] bg-white px-3 py-1.5 text-sm';
+    'h-9 w-full rounded-md border border-[color:var(--rvc-border)] bg-white px-3 text-sm';
+  // フィールド行に並ぶボタンも同じ高さに合わせる。
+  const inlineButtonClass =
+    'h-9 shrink-0 rounded-md border border-[color:var(--rvc-border)] px-3 text-sm font-semibold disabled:opacity-50';
 
   const categoryLabelKey: Record<GeneratedFileCategory, MessageKey> = {
     source: 'sdk_cat_source',
@@ -79,7 +83,7 @@
           {/each}
         </select>
         <button
-          class="shrink-0 rounded-md border border-[color:var(--rvc-border)] px-3 py-1.5 text-sm font-semibold disabled:opacity-50"
+          class={inlineButtonClass}
           disabled={viewModel.selectedProfileName === ''}
           onclick={() => viewModel.deleteProfile(viewModel.selectedProfileName)}
         >{$t('sdk_profile_delete')}</button>
@@ -118,7 +122,7 @@
     <div class="flex gap-2">
       <input class={inputClass} placeholder="/absolute/path/to/output" bind:value={viewModel.outputDirectory} />
       <button
-        class="shrink-0 rounded-md border border-[color:var(--rvc-border)] px-3 py-1.5 text-sm font-semibold"
+        class={inlineButtonClass}
         onclick={() => viewModel.pickOutputDirectory()}
       >{$t('sdk_browse')}</button>
     </div>
@@ -133,7 +137,7 @@
     <div class="flex gap-2">
       <input class={inputClass} placeholder={$t('sdk_profile_name_placeholder')} bind:value={newProfileName} />
       <button
-        class="shrink-0 rounded-md border border-[color:var(--rvc-border)] px-3 py-1.5 text-sm font-semibold disabled:opacity-50"
+        class={inlineButtonClass}
         disabled={newProfileName.trim() === ''}
         onclick={async () => {
           await viewModel.saveProfile(newProfileName, schema);

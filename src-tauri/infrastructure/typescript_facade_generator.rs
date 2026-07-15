@@ -34,21 +34,21 @@ impl FacadeService {
 /// openapi-generator(typescript-fetch)の出力を Operation Group Facade へラップする Adapter。
 /// x-rv-operation-group.key を SDK Service、operationId から group prefix を除いた名を SDK method にする。
 /// Auth 固有の分岐は持たない（任意の Operation Group に適用）。
-pub struct TypeScriptFacadeGenerator;
+pub struct TypeScriptFetchFacadeGenerator;
 
-impl TypeScriptFacadeGenerator {
+impl TypeScriptFetchFacadeGenerator {
     pub fn new() -> Self {
         Self
     }
 }
 
-impl Default for TypeScriptFacadeGenerator {
+impl Default for TypeScriptFetchFacadeGenerator {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl FacadeGenerator for TypeScriptFacadeGenerator {
+impl FacadeGenerator for TypeScriptFetchFacadeGenerator {
     fn generate(&self, request: &FacadeRequest) -> Result<FacadeResult, AppError> {
         let services = build_facade_model(&request.openapi_document);
         if services.is_empty() {
@@ -306,7 +306,7 @@ mod tests {
             openapi_document: example_document(),
             output_directory: root.to_string_lossy().to_string(),
         };
-        let result = TypeScriptFacadeGenerator::new().generate(&request).unwrap();
+        let result = TypeScriptFetchFacadeGenerator::new().generate(&request).unwrap();
         assert!(result.generated_files.contains(&"src/facade/ExampleService.ts".to_string()));
         assert!(result.generated_files.contains(&"src/facade/RvClient.ts".to_string()));
         assert!(root.join("src/facade/ExampleService.ts").exists());

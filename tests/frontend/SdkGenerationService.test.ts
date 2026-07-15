@@ -62,14 +62,17 @@ class FakeRepo implements ISdkGenerationRepository {
       }
     ]);
   }
+  profiles: SdkGenerationProfile[] = [];
   async listProfiles(): Promise<Result<SdkGenerationProfile[]>> {
-    return ok([]);
+    return ok(this.profiles);
   }
   async saveProfile(profile: SdkGenerationProfile): Promise<Result<SdkGenerationProfile[]>> {
-    return ok([profile]);
+    this.profiles = [...this.profiles.filter((p) => p.name !== profile.name), profile];
+    return ok(this.profiles);
   }
-  async deleteProfile(_name: string): Promise<Result<SdkGenerationProfile[]>> {
-    return ok([]);
+  async deleteProfile(name: string): Promise<Result<SdkGenerationProfile[]>> {
+    this.profiles = this.profiles.filter((p) => p.name !== name);
+    return ok(this.profiles);
   }
   async pickOutputDirectory(_current: string): Promise<Result<string | null>> {
     return ok('/picked/dir');
@@ -168,5 +171,20 @@ describe('SdkGenerationViewModel generators and profiles', () => {
     await vm.saveProfile('   ', 'rv_auth');
     expect(vm.profileError).not.toBeNull();
     expect(vm.profiles.length).toBe(0);
+  });
+
+  it('restores the last selected profile on the next load', async () => {
+    localStorage.clear();
+    const repo = new FakeRepo(validReport);
+    const first = new SdkGenerationViewModel(new SdkGenerationService(repo));
+    first.packageName = '@robovill/rv-auth-sdk';
+    first.outputDirectory = '/tmp/out';
+    await first.saveProfile('Auth TS', 'rv_auth');
+
+    // 画面を開き直した状況を模す（永続化ストア共有・localStorage に前回選択が残る）。
+    const reopened = new SdkGenerationViewModel(new SdkGenerationService(repo));
+    await reopened.load();
+    expect(reopened.selectedProfileName).toBe('Auth TS');
+    expect(reopened.packageName).toBe('@robovill/rv-auth-sdk');
   });
 });

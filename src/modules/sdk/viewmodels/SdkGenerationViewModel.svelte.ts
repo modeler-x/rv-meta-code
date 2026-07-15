@@ -10,23 +10,32 @@ import type {
 } from '@/modules/sdk/types/SdkGeneration';
 
 const OUTPUT_DIR_KEY = 'rv_sdk_output_directory';
+const SELECTED_PROFILE_KEY = 'rv_sdk_selected_profile';
 
-function loadOutputDirectory(): string {
+function loadLocal(key: string): string {
   try {
     if (typeof localStorage === 'undefined') return '';
-    return localStorage.getItem(OUTPUT_DIR_KEY) ?? '';
+    return localStorage.getItem(key) ?? '';
   } catch {
     return '';
   }
 }
 
-function saveOutputDirectory(directory: string): void {
+function saveLocal(key: string, value: string): void {
   try {
     if (typeof localStorage === 'undefined') return;
-    localStorage.setItem(OUTPUT_DIR_KEY, directory);
+    localStorage.setItem(key, value);
   } catch {
     // 保存失敗は握りつぶす（設定値の記憶）。
   }
+}
+
+function loadOutputDirectory(): string {
+  return loadLocal(OUTPUT_DIR_KEY);
+}
+
+function saveOutputDirectory(directory: string): void {
+  saveLocal(OUTPUT_DIR_KEY, directory);
 }
 
 export class SdkGenerationViewModel {
@@ -41,7 +50,8 @@ export class SdkGenerationViewModel {
   generators: GeneratorDescriptor[] = $state([]);
   // 保存済み Profile 一覧。
   profiles: SdkGenerationProfile[] = $state([]);
-  selectedProfileName = $state('');
+  // 前回選択した Profile を端末に記憶して復元する。
+  selectedProfileName = $state(loadLocal(SELECTED_PROFILE_KEY));
   profileError: string | null = $state(null);
 
   phase: SdkGenerationPhase = $state('idle');
@@ -78,12 +88,22 @@ export class SdkGenerationViewModel {
       }
     }
     const profiles = await this.sdkGenerationService.listProfiles();
-    if (profiles.success) this.profiles = profiles.data;
+    if (profiles.success) {
+      this.profiles = profiles.data;
+      // 前回選択した Profile が今も存在するなら、その内容をフォームへ復元する。
+      if (this.selectedProfileName && this.profiles.some((p) => p.name === this.selectedProfileName)) {
+        this.applyProfile(this.selectedProfileName);
+      } else if (this.selectedProfileName) {
+        this.selectedProfileName = '';
+        saveLocal(SELECTED_PROFILE_KEY, '');
+      }
+    }
   }
 
   /** Profile を現在のフォームへ適用する。 */
   applyProfile(name: string): void {
     this.selectedProfileName = name;
+    saveLocal(SELECTED_PROFILE_KEY, name);
     const profile = this.profiles.find((p) => p.name === name);
     if (!profile) return;
     this.generatorId = profile.generatorId;
@@ -115,6 +135,7 @@ export class SdkGenerationViewModel {
     if (result.success) {
       this.profiles = result.data;
       this.selectedProfileName = trimmed;
+      saveLocal(SELECTED_PROFILE_KEY, trimmed);
     } else {
       this.profileError = `${result.error.code}: ${result.error.message}`;
     }
@@ -127,7 +148,10 @@ export class SdkGenerationViewModel {
     const result = await this.sdkGenerationService.deleteProfile(name);
     if (result.success) {
       this.profiles = result.data;
-      if (this.selectedProfileName === name) this.selectedProfileName = '';
+      if (this.selectedProfileName === name) {
+        this.selectedProfileName = '';
+        saveLocal(SELECTED_PROFILE_KEY, '');
+      }
     } else {
       this.profileError = `${result.error.code}: ${result.error.message}`;
     }
