@@ -31,6 +31,10 @@ impl AppError {
     }
 
     pub fn database(message: &str) -> Self {
+        // DB エラーはリポジトリで `?` により UI へ返すだけで、これまでサーバ側ログに
+        // 残らなかった（接続失敗・クエリ失敗の全経路がこの1点を通る）。生成元である
+        // ここで必ず記録し、後追いで原因（Postgres の実メッセージ）を特定できるようにする。
+        log::error!("DATABASE_ERROR: {message}");
         Self::new("DATABASE_ERROR", message)
     }
 
