@@ -373,26 +373,34 @@ impl StagingDir {
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_else(|| "sdk".to_string());
         let name = format!(".{base}.rv-staging-{}-{}", std::process::id(), nanos);
-        let path = final_target
-            .parent()
-            .unwrap_or_else(|| Path::new("."))
-            .join(name);
-        std::fs::create_dir_all(&path)?;
-        Ok(Self { path, keep: false })
+        // 1) 出力先と同一 FS 上（親ディレクトリ）を優先する。rename が atomic になる。
+        if let Some(parent) = final_target.parent() {
+            let sibling = parent.join(&name);
+            if std::fs::create_dir_all(&sibling).is_ok() {
+                return Ok(Self { path: sibling, keep: false });
+            }
+            // 親が read-only（例: 出力先が /tmp で親が / の macOS）等で作れない場合は退避する。
+        }
+        // 2) OS の一時ディレクトリへ退避する（cross-FS は promote 側の move_tree で吸収）。
+        let fallback = std::env::temp_dir().join(&name);
+        std::fs::create_dir_all(&fallback)?;
+        Ok(Self { path: fallback, keep: false })
     }
 
     fn path(&self) -> &Path {
         &self.path
     }
 
-    /// staging を output へ移す。output 未存在なら rename（同一 FS で atomic）、
-    /// 既存ならファイル単位で merge move する。
+    /// staging を output へ移す。output 未存在かつ同一 FS なら rename（atomic）、
+    /// 既存または cross-FS ではファイル単位で merge move する。
     fn promote(mut self, output: &Path) -> std::io::Result<()> {
         if output.exists() {
             move_tree(&self.path, output)?;
-            std::fs::remove_dir_all(&self.path)?;
-        } else {
-            std::fs::rename(&self.path, output)?;
+            let _ = std::fs::remove_dir_all(&self.path);
+        } else if std::fs::rename(&self.path, output).is_err() {
+            // cross-device（EXDEV）等で rename が失敗したら copy ベースで移す。
+            move_tree(&self.path, output)?;
+            let _ = std::fs::remove_dir_all(&self.path);
         }
         self.keep = true;
         Ok(())
@@ -691,6 +699,44 @@ mod tests {
             .filter(|e| e.file_name().to_string_lossy().contains("rv-staging"))
             .collect();
         assert!(leftover.is_empty(), "staging dir must not remain");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn generate_merges_into_a_preexisting_output_dir() {
+        // 出力先が既に存在するケース（/tmp のような常設ディレクトリを模す）。
+        let root = unique_temp_dir("preexisting");
+        let out = root.join("sdk");
+        std::fs::create_dir_all(out.join("keep")).unwrap();
+        std::fs::write(out.join("keep").join("existing.txt"), "x").unwrap();
+        let a = OpenApiGeneratorCliAdapter::new(WritingRunner, "openapi-generator-cli", Some(root.clone()));
+        a.generate(&request(&out.to_string_lossy())).unwrap();
+        // 既存ファイルは保持され、生成物は merge される。
+        assert!(out.join("keep").join("existing.txt").exists());
+        assert!(out.join("src").join("index.ts").exists());
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn generate_succeeds_when_output_parent_is_read_only() {
+        // 実障害の再現: 出力先自体は書込可だが親が read-only（/tmp の親が / のケース）。
+        // staging を親の兄弟に作れないため一時ディレクトリへ退避し、既存 output へ merge する。
+        use std::os::unix::fs::PermissionsExt;
+        let root = unique_temp_dir("roparent");
+        let ro = root.join("ro");
+        let out = ro.join("sdk");
+        std::fs::create_dir_all(&out).unwrap();
+        std::fs::set_permissions(&ro, std::fs::Permissions::from_mode(0o555)).unwrap();
+
+        let a = OpenApiGeneratorCliAdapter::new(WritingRunner, "openapi-generator-cli", Some(root.clone()));
+        let result = a.generate(&request(&out.to_string_lossy()));
+
+        // 後始末できるよう先に権限を戻す。
+        let _ = std::fs::set_permissions(&ro, std::fs::Permissions::from_mode(0o755));
+        let result = result.unwrap();
+        assert!(out.join("src").join("index.ts").exists());
+        assert!(result.generated_files.iter().any(|f| f == "src/index.ts"));
         let _ = std::fs::remove_dir_all(&root);
     }
 
