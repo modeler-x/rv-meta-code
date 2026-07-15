@@ -279,8 +279,21 @@ fn parse_version(text: &str) -> Option<(u64, u64, u64)> {
     None
 }
 
-/// 出力ディレクトリからの相対パスで生成ファイルを列挙する（再帰・ソート済み）。
+/// 生成されたファイルだけを列挙する（出力先に元からある無関係ファイルを含めない）。
+/// openapi-generator は生成物一覧を .openapi-generator/FILES へ出力するので、それを使う。
+/// マニフェストが無い場合のみ、フォールバックとして再帰走査する。
 fn list_generated_files(root: &Path) -> Vec<String> {
+    let manifest = root.join(".openapi-generator").join("FILES");
+    if let Ok(content) = std::fs::read_to_string(&manifest) {
+        let mut files: Vec<String> = content
+            .lines()
+            .map(|line| line.trim())
+            .filter(|line| !line.is_empty())
+            .map(|line| line.to_string())
+            .collect();
+        files.sort();
+        return files;
+    }
     let mut files = Vec::new();
     collect_files(root, root, &mut files);
     files.sort();

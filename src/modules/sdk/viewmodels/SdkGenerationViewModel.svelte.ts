@@ -39,15 +39,22 @@ export class SdkGenerationViewModel {
   result: GenerateSdkResult | null = $state(null);
   errorMessage: string | null = $state(null);
   errorCode: string | null = $state(null);
+  // フォルダー選択ダイアログの失敗理由（無反応に見えないよう UI へ表示する）。
+  pickError: string | null = $state(null);
 
   constructor(private readonly sdkGenerationService: SdkGenerationService) {}
 
   /** OS のフォルダー選択ダイアログを開き、選択されたら出力先へ反映・記憶する。 */
   async pickOutputDirectory(): Promise<void> {
+    this.pickError = null;
     const result = await this.sdkGenerationService.pickOutputDirectory(this.outputDirectory);
-    if (result.success && result.data) {
-      this.outputDirectory = result.data;
-      saveOutputDirectory(this.outputDirectory);
+    if (result.success) {
+      if (result.data) {
+        this.outputDirectory = result.data;
+        saveOutputDirectory(this.outputDirectory);
+      }
+    } else {
+      this.pickError = `${result.error.code}: ${result.error.message}`;
     }
   }
 
@@ -105,5 +112,6 @@ export class SdkGenerationViewModel {
     this.result = null;
     this.errorMessage = null;
     this.errorCode = null;
+    this.pickError = null;
   }
 }

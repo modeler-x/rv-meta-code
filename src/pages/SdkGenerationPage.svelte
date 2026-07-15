@@ -67,6 +67,9 @@
       >{$t('sdk_browse')}</button>
     </div>
     <p class="mt-1 text-[11px] leading-5 text-[color:var(--rvc-muted)]">{$t('sdk_naming_guide')}</p>
+    {#if viewModel.pickError}
+      <p class="mt-1 select-text text-[11px] text-[color:#e5484d]">{viewModel.pickError}</p>
+    {/if}
   </div>
 
   <button
