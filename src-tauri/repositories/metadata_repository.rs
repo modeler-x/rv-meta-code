@@ -2,9 +2,11 @@ use serde_json::Value;
 use tokio_postgres::Row;
 
 use crate::dto::compile_schema_response::CompileSchemaResponse;
+use std::collections::HashSet;
+
 use crate::dto::metadata_dto::{
-    DocumentDetailDto, DocumentDto, EntityDetailDto, EntitySummaryDto, FieldDto, OpenApiSpecDto,
-    OperationDto, SchemaSummaryDto,
+    ComponentSummaryDto, DocumentDetailDto, DocumentDto, EntityDetailDto, EntitySummaryDto, FieldDto,
+    OpenApiSpecDto, OperationDto, SchemaSummaryDto,
 };
 use crate::dto::operation_group_dto::{OperationGroupDetailDto, OperationGroupSummaryDto};
 use crate::errors::app_error::AppError;
@@ -168,6 +170,78 @@ impl MetadataRepository {
             root_security: row.get(11),
             annotation: row.get(13),
         })
+    }
+
+    /// components（schemas / responses / securitySchemes）の一覧。
+    /// 宣言（template/document override）を SQL で取り、最終出力(emitted)と generated を Rust で統合する。
+    pub async fn list_components(&self, schema: &str) -> Result<Vec<ComponentSummaryDto>, AppError> {
+        let client = pg::connect(&self.target).await?;
+
+        // 宣言済み component（template + document override）。override を優先した有効値。
+        let declared = client
+            .query(
+                "SELECT component_section,
+                        component_name,
+                        bool_or(document_id IS NOT NULL) AS has_override,
+                        (array_agg(definition ORDER BY (document_id IS NOT NULL) DESC))[1] AS definition,
+                        (array_agg(enabled ORDER BY (document_id IS NOT NULL) DESC))[1] AS enabled
+                 FROM rv_meta.openapi_components
+                 WHERE document_id IS NULL OR document_id = rv_meta._get_document_id($1)
+                 GROUP BY component_section, component_name",
+                &[&schema],
+            )
+            .await?;
+
+        // 最終 OpenAPI の components（Entity Schema・参照ベース securityScheme 反映済み）。
+        let emitted: Value = client
+            .query_one("SELECT rv_meta._get_openapi_components($1)", &[&schema])
+            .await?
+            .get(0);
+
+        let is_emitted = |section: &str, name: &str| {
+            emitted
+                .get(section)
+                .and_then(|s| s.get(name))
+                .is_some()
+        };
+
+        let mut out: Vec<ComponentSummaryDto> = Vec::new();
+        let mut seen: HashSet<(String, String)> = HashSet::new();
+        for row in &declared {
+            let section: String = row.get(0);
+            let name: String = row.get(1);
+            let has_override: bool = row.get(2);
+            seen.insert((section.clone(), name.clone()));
+            out.push(ComponentSummaryDto {
+                emitted: is_emitted(&section, &name),
+                scope: if has_override { "document" } else { "template" }.to_string(),
+                definition: row.get(3),
+                enabled: row.get(4),
+                section,
+                name,
+            });
+        }
+
+        // 宣言に無い emitted component（Entity Schema 等）は generated として補う。
+        for section in ["schemas", "responses", "securitySchemes"] {
+            if let Some(members) = emitted.get(section).and_then(Value::as_object) {
+                for (name, definition) in members {
+                    if !seen.contains(&(section.to_string(), name.clone())) {
+                        out.push(ComponentSummaryDto {
+                            section: section.to_string(),
+                            name: name.clone(),
+                            scope: "generated".to_string(),
+                            enabled: true,
+                            emitted: true,
+                            definition: definition.clone(),
+                        });
+                    }
+                }
+            }
+        }
+
+        out.sort_by(|a, b| (a.section.as_str(), a.name.as_str()).cmp(&(b.section.as_str(), b.name.as_str())));
+        Ok(out)
     }
 
     pub async fn list_entities(

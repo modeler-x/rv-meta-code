@@ -1,3 +1,4 @@
+pub mod components;
 pub mod current_connection;
 pub mod document_detail;
 pub mod documents;

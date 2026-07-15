@@ -10,7 +10,7 @@
   import type { EntityViewModel } from '@/modules/entity/viewmodels/EntityViewModel.svelte';
   import type { OperationGroupViewModel } from '@/modules/operation-group/viewmodels/OperationGroupViewModel.svelte';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
-  let { document, documentViewModel, entityViewModel, operationGroupViewModel, onOpenEntity, onOpenGroup, onGenerateSdk }: {
+  let { document, documentViewModel, entityViewModel, operationGroupViewModel, onOpenEntity, onOpenGroup, onGenerateSdk, onOpenComponents }: {
     document: OpenApiDocumentSummary;
     documentViewModel: DocumentViewModel;
     entityViewModel: EntityViewModel;
@@ -18,6 +18,7 @@
     onOpenEntity: (entityId: string) => void;
     onOpenGroup: (groupKey: string) => void;
     onGenerateSdk: () => void;
+    onOpenComponents: () => void;
   } = $props();
 
   const detail = $derived(documentViewModel.detail);
@@ -43,6 +44,10 @@
     disabled={documentViewModel.isValidating}
     onclick={() => documentViewModel.validate(document.schemaName)}
   >{$t('sdk_validation')}</button>
+  <button
+    class="rounded-md border border-[color:var(--rvc-border)] px-3 py-1.5 text-xs font-semibold"
+    onclick={() => onOpenComponents()}
+  >{$t('title_components')}</button>
   <button
     class="rounded-md border border-[color:var(--rvc-border)] px-3 py-1.5 text-xs font-semibold"
     onclick={() => documentViewModel.exportSpecs([document.schemaName])}

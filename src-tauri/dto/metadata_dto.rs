@@ -83,6 +83,20 @@ pub struct EntitySummaryDto {
     pub is_read_only: bool,
 }
 
+/// OpenAPI components の1件（参照ブラウザ用）。
+/// scope: template（document_id NULL）/ document（固有Override）/ generated（Entity Schema 等）。
+/// emitted: 最終 OpenAPI の components に実際に出力されるか。
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentSummaryDto {
+    pub section: String,
+    pub name: String,
+    pub scope: String,
+    pub enabled: bool,
+    pub emitted: bool,
+    pub definition: Value,
+}
+
 /// フィールド（openapi_fields）。
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]

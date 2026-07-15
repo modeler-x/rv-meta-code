@@ -33,4 +33,8 @@ export class RouteService {
   createSdkGenerationRoute(schemaName: string, backRoute: AppRoute): AppRoute {
     return { name: 'sdkGeneration', schemaName, backRoute };
   }
+
+  createComponentsRoute(schemaName: string, backRoute: AppRoute): AppRoute {
+    return { name: 'components', schemaName, backRoute };
+  }
 }

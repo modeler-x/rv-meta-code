@@ -9,6 +9,8 @@ import { OperationGroupService } from '@/modules/operation-group/services/Operat
 import { OperationGroupRepository } from '@/modules/operation-group/repositories/OperationGroupRepository';
 import { SdkGenerationService } from '@/modules/sdk/services/SdkGenerationService';
 import { SdkGenerationRepository } from '@/modules/sdk/repositories/SdkGenerationRepository';
+import { ComponentService } from '@/modules/component/services/ComponentService';
+import { ComponentRepository } from '@/modules/component/repositories/ComponentRepository';
 import { ConnectionService } from '@/modules/connection/services/ConnectionService';
 import { ConnectionRepository } from '@/modules/connection/repositories/ConnectionRepository';
 import { ServerService } from '@/modules/server/services/ServerService';
@@ -25,6 +27,7 @@ export const appProvider = {
   entityService: new EntityService(new EntityRepository()),
   operationGroupService: new OperationGroupService(new OperationGroupRepository()),
   sdkGenerationService: new SdkGenerationService(new SdkGenerationRepository()),
+  componentService: new ComponentService(new ComponentRepository()),
   connectionService: new ConnectionService(new ConnectionRepository()),
   serverService: new ServerService(new ServerRepository()),
   generationService: new GenerationService(),

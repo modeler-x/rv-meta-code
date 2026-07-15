@@ -15,6 +15,7 @@ use crate::commands::connection::save::save_connection;
 use crate::commands::connection::set_active::set_active_connection;
 use crate::commands::connection::test::test_connection;
 use crate::commands::metadata::current_connection::get_current_connection;
+use crate::commands::metadata::components::list_components;
 use crate::commands::metadata::document_detail::get_document_detail;
 use crate::commands::metadata::documents::list_documents;
 use crate::commands::metadata::entities::list_entities;
@@ -63,6 +64,7 @@ pub fn run() {
             list_schemas,
             list_documents,
             get_document_detail,
+            list_components,
             list_entities,
             get_entity_detail,
             get_operation,
