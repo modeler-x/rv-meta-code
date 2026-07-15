@@ -24,6 +24,7 @@ use crate::commands::metadata::operation_groups::detail::get_operation_group_det
 use crate::commands::metadata::operation_groups::list::list_operation_groups;
 use crate::commands::metadata::schemas::list_schemas;
 use crate::commands::metadata::set_read_only::set_read_only;
+use crate::commands::metadata::validate_openapi::validate_openapi;
 use crate::commands::schema::compile::compile_schema;
 use crate::commands::server::delete::delete_server;
 use crate::commands::server::list::list_servers;
@@ -63,6 +64,7 @@ pub fn run() {
             get_operation,
             list_operation_groups,
             get_operation_group_detail,
+            validate_openapi,
             set_read_only,
             get_openapi_specs,
             list_servers,

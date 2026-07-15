@@ -7,6 +7,7 @@ pub mod operation;
 pub mod operation_groups;
 pub mod schemas;
 pub mod set_read_only;
+pub mod validate_openapi;
 
 use tauri::{AppHandle, Manager};
 

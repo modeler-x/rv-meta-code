@@ -8,8 +8,8 @@ rv-metaの[Operation Group / Function Operation / OpenAPI変更仕様](../../../
 
 | Phase | 内容 | 状態 |
 | --- | --- | --- |
-| 1 | Operation Group / Function Operation表示 | 実装中（表示・共通DTO・Repository分離は完了。rv-meta Public Interfaceへの移行が未了） |
-| 2 | OpenAPI検証 | 未着手 |
+| 1 | Operation Group / Function Operation表示 | 完了（表示・共通DTO・Repository分離）。rv-meta Internal依存は据え置き（合意済み） |
+| 2 | OpenAPI検証 | Backend実装済み（`OpenApiValidator` Port + 既定実装 + `validate_openapi` Command + Rustテスト）。UI連携はPhase 4 |
 | 3 | SDK Generator Port / Adapter | 未着手 |
 | 4 | SDK生成UI | 未着手 |
 
