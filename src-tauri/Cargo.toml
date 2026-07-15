@@ -26,3 +26,8 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 aes-gcm = "0.10"
 rand = "0.8"
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
+
+# 統合テスト（tests/backend/ 配下は自動検出されないため明示配線する）。
+[[test]]
+name = "dto_serialization"
+path = "../tests/backend/dto_serialization_test.rs"

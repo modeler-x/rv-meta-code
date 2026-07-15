@@ -1,12 +1,8 @@
 import { ok, fail, type Result } from '@/shared/result/Result';
 import { invokeTauri } from '@/shared/ipc/invokeTauri';
+import { toIpcErrorMessage as toErrorMessage } from '@/shared/ipc/toIpcErrorMessage';
 import type { OpenApiDocumentSummary } from '@/modules/document/types/OpenApiDocumentSummary';
 import type { OpenApiSpec } from '@/modules/document/types/OpenApiSpec';
-
-function toErrorMessage(error: unknown): string {
-  const shape = error as { message?: string } | null;
-  return shape && typeof shape.message === 'string' ? shape.message : String(error);
-}
 
 export interface IDocumentRepository {
   listDocuments(): Promise<Result<OpenApiDocumentSummary[]>>;

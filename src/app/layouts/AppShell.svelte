@@ -13,6 +13,7 @@
   import EntityListPage from '@/pages/EntityListPage.svelte';
   import EntityDetailPage from '@/pages/EntityDetailPage.svelte';
   import OperationDetailPage from '@/pages/OperationDetailPage.svelte';
+  import OperationGroupDetailPage from '@/pages/OperationGroupDetailPage.svelte';
   import RecentPage from '@/pages/RecentPage.svelte';
   import ProfilePage from '@/pages/ProfilePage.svelte';
   import ConnectionPage from '@/pages/ConnectionPage.svelte';
@@ -20,6 +21,7 @@
   import { SchemaViewModel } from '@/modules/schema/viewmodels/SchemaViewModel.svelte';
   import { DocumentViewModel } from '@/modules/document/viewmodels/DocumentViewModel.svelte';
   import { EntityViewModel } from '@/modules/entity/viewmodels/EntityViewModel.svelte';
+  import { OperationGroupViewModel } from '@/modules/operation-group/viewmodels/OperationGroupViewModel.svelte';
   import { GenerationViewModel } from '@/modules/generation/viewmodels/GenerationViewModel.svelte';
   import { RecentViewModel } from '@/modules/recent/viewmodels/RecentViewModel.svelte';
   import type { RecentActivity } from '@/modules/recent/types/RecentActivity';
@@ -31,6 +33,7 @@
   const schemaViewModel = new SchemaViewModel(appProvider.schemaService);
   const documentViewModel = new DocumentViewModel(appProvider.documentService);
   const entityViewModel = new EntityViewModel(appProvider.entityService);
+  const operationGroupViewModel = new OperationGroupViewModel(appProvider.operationGroupService);
   const generationViewModel = new GenerationViewModel(appProvider.generationService);
   const recentViewModel = new RecentViewModel(appProvider.recentService);
   // 生成成功後はドキュメントを再読込し、履歴に記録する。
@@ -71,12 +74,24 @@
     const document = documentViewModel.findDocument(documentId);
     if (document) {
       void entityViewModel.loadEntities(document.schemaName);
+      void operationGroupViewModel.loadGroups(document.schemaName);
       recentViewModel.record({ kind: 'document', title: document.title, subtitle: `${document.schemaName} / ${document.version}`, targetId: String(document.id), schemaName: document.schemaName });
     }
   }
-  function openOperation(entityId: string, operationId: string): void {
-    route = appProvider.routeService.createOperationRoute(entityId, operationId);
-    const operation = entityViewModel.detail?.operations.find((op) => String(op.id) === operationId);
+  function openOperationGroup(schemaName: string, groupKey: string, backRoute: AppRoute): void {
+    route = appProvider.routeService.createOperationGroupRoute(schemaName, groupKey, backRoute);
+    void operationGroupViewModel.loadDetail(schemaName, groupKey);
+  }
+  function openFunctionOperation(schemaName: string, groupKey: string, operationRowId: string, backRoute: AppRoute): void {
+    route = appProvider.routeService.createFunctionOperationRoute(schemaName, groupKey, operationRowId, backRoute);
+    const operation = operationGroupViewModel.findOperation(operationRowId);
+    if (operation) {
+      recentViewModel.record({ kind: 'operation', title: `${operation.method} ${operation.path}`, subtitle: selectedGroup?.displayName ?? '', targetId: String(operation.id), schemaName });
+    }
+  }
+  function openOperation(entityId: string, operationRowId: string): void {
+    route = appProvider.routeService.createOperationRoute(entityId, operationRowId);
+    const operation = entityViewModel.detail?.operations.find((op) => String(op.id) === operationRowId);
     const entity = entityViewModel.findEntity(entityId);
     if (operation) {
       recentViewModel.record({ kind: 'operation', title: `${operation.method} ${operation.path}`, subtitle: entity?.tableName ?? '', targetId: String(operation.id), entityId, schemaName: entity?.tableSchema });
@@ -102,9 +117,11 @@
 
   const selectedEntity = $derived(entityViewModel.findEntity(route.entityId));
   const selectedDocument = $derived(documentViewModel.findDocument(route.documentId));
-  const selectedOperation = $derived(entityViewModel.detail?.operations.find((operation) => String(operation.id) === route.operationId));
+  const selectedOperation = $derived(entityViewModel.detail?.operations.find((operation) => String(operation.id) === route.operationRowId));
+  const selectedGroup = $derived(operationGroupViewModel.findGroup(route.groupKey));
+  const selectedFunctionOperation = $derived(operationGroupViewModel.findOperation(route.operationRowId));
   const connectionLabel = $derived(currentConnection ? `${currentConnection.database} / ${currentConnection.host}` : $t('no_connection'));
-  const titleMap = $derived({ welcome: $t('title_welcome'), schema: $t('title_schemas'), documents: $t('title_documents'), documentDetail: selectedDocument?.title ?? $t('title_documents'), entities: $t('title_entities'), entityDetail: selectedEntity?.tableName ?? '', operationDetail: selectedOperation?.path ?? $t('sec_operations'), recent: $t('title_recent'), profile: $t('title_profile'), connections: $t('title_connections'), servers: $t('title_servers') });
+  const titleMap = $derived({ welcome: $t('title_welcome'), schema: $t('title_schemas'), documents: $t('title_documents'), documentDetail: selectedDocument?.title ?? $t('title_documents'), entities: $t('title_entities'), entityDetail: selectedEntity?.tableName ?? '', operationDetail: selectedOperation?.path ?? $t('sec_operations'), operationGroupDetail: selectedGroup?.displayName ?? $t('title_operation_group'), functionOperationDetail: selectedFunctionOperation?.path ?? $t('sec_operations'), recent: $t('title_recent'), profile: $t('title_profile'), connections: $t('title_connections'), servers: $t('title_servers') });
   const title = $derived(titleMap[route.name]);
 </script>
 
@@ -121,13 +138,21 @@
         {:else if route.name === 'documents'}
           <DocumentListPage viewModel={documentViewModel} onOpenDocument={openDocument} />
         {:else if route.name === 'documentDetail' && selectedDocument}
-          <DocumentDetailPage document={selectedDocument} entityViewModel={entityViewModel} onOpenEntity={(entityId) => openEntity(entityId, route)} />
+          <DocumentDetailPage document={selectedDocument} entityViewModel={entityViewModel} operationGroupViewModel={operationGroupViewModel} onOpenEntity={(entityId) => openEntity(entityId, route)} onOpenGroup={(groupKey) => openOperationGroup(selectedDocument.schemaName, groupKey, route)} />
         {:else if route.name === 'entities'}
           <EntityListPage viewModel={entityViewModel} onOpenEntity={(entityId) => openEntity(entityId)} />
         {:else if route.name === 'entityDetail' && selectedEntity}
           <EntityDetailPage entity={selectedEntity} fields={entityViewModel.detail?.fields ?? []} operations={entityViewModel.detail?.operations ?? []} onOpenOperation={(operationId) => openOperation(selectedEntity.id.toString(), operationId)} onToggleReadOnly={(isReadOnly) => entityViewModel.toggleReadOnly(selectedEntity, isReadOnly)} isReadOnlyUpdating={entityViewModel.isReadOnlyUpdating} />
         {:else if route.name === 'operationDetail' && selectedEntity && selectedOperation}
           <OperationDetailPage entity={selectedEntity} operation={selectedOperation} fieldOrder={(entityViewModel.detail?.fields ?? []).map((field) => field.columnName)} components={entityViewModel.detail?.components ?? {}} />
+        {:else if route.name === 'operationGroupDetail' && selectedGroup}
+          <OperationGroupDetailPage group={selectedGroup} operations={operationGroupViewModel.detail?.operations ?? []} isLoading={operationGroupViewModel.isDetailLoading} onOpenOperation={(operationRowId) => openFunctionOperation(route.schemaName ?? '', route.groupKey ?? '', operationRowId, route)} />
+        {:else if route.name === 'functionOperationDetail' && selectedFunctionOperation}
+          <OperationDetailPage
+            subtitle={selectedGroup?.displayName ?? ''}
+            operation={selectedFunctionOperation}
+            components={operationGroupViewModel.detail?.components ?? {}}
+          />
         {:else if route.name === 'recent'}
           <RecentPage viewModel={recentViewModel} onOpen={openRecent} />
         {:else if route.name === 'profile'}

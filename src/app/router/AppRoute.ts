@@ -6,6 +6,8 @@ export type AppRouteName =
   | 'entities'
   | 'entityDetail'
   | 'operationDetail'
+  | 'operationGroupDetail'
+  | 'functionOperationDetail'
   | 'recent'
   | 'profile'
   | 'connections'
@@ -15,6 +17,10 @@ export type AppRoute = {
   name: AppRouteName;
   documentId?: string;
   entityId?: string;
-  operationId?: string;
+  // openapi_operations.id（DB 内部整数ID）の文字列。OpenAPI の operationId とは別物。
+  operationRowId?: string;
+  // Operation Group / Function Operation の識別に使う。
+  schemaName?: string;
+  groupKey?: string;
   backRoute?: AppRoute;
 };

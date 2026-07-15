@@ -20,6 +20,8 @@ use crate::commands::metadata::entities::list_entities;
 use crate::commands::metadata::entity_detail::get_entity_detail;
 use crate::commands::metadata::openapi_specs::get_openapi_specs;
 use crate::commands::metadata::operation::get_operation;
+use crate::commands::metadata::operation_groups::detail::get_operation_group_detail;
+use crate::commands::metadata::operation_groups::list::list_operation_groups;
 use crate::commands::metadata::schemas::list_schemas;
 use crate::commands::metadata::set_read_only::set_read_only;
 use crate::commands::schema::compile::compile_schema;
@@ -59,6 +61,8 @@ pub fn run() {
             list_entities,
             get_entity_detail,
             get_operation,
+            list_operation_groups,
+            get_operation_group_detail,
             set_read_only,
             get_openapi_specs,
             list_servers,

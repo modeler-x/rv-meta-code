@@ -34,3 +34,10 @@ impl AppError {
         Self::new("DATABASE_ERROR", message)
     }
 }
+
+/// tokio-postgres のクエリエラーを DATABASE_ERROR へ統一変換する（`?` で伝播できる）。
+impl From<tokio_postgres::Error> for AppError {
+    fn from(error: tokio_postgres::Error) -> Self {
+        Self::database(&format!("query failed: {error}"))
+    }
+}

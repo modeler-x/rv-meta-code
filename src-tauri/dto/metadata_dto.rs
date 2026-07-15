@@ -74,21 +74,35 @@ pub struct FieldDto {
     pub description: Option<String>,
 }
 
-/// オペレーション（openapi_operations）。
+/// オペレーション（openapi_operations）。Entity Operation と Function Operation の共通DTO。
+/// id は operationRowId（DB内部の整数ID）、operationId は OpenAPI 文字列ID。混同しない。
+/// entity_id と operation_group_id は同時に設定しない（ownerKind で所有者を示す）。
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OperationDto {
     pub id: i32,
-    pub entity_id: i32,
+    pub operation_id: String,
+    /// "entity" | "operationGroup"
+    pub owner_kind: String,
+    pub entity_id: Option<i32>,
+    pub operation_group_id: Option<i32>,
     pub operation: String,
     pub method: String,
     pub path: String,
+    /// OpenAPI tags（Entity は resource_name 既定、Function は @openapi.tags）。
+    pub tags: Value,
+    /// DB に保存された Operation 固有 security。NULL は Root 継承、[] は認証不要。
+    pub security: Option<Value>,
     pub summary: Option<String>,
     pub description: Option<String>,
     pub parameters: Value,
     pub request_body: Option<Value>,
     pub responses: Value,
     pub required_fields: Vec<String>,
+    /// Root security を合成した表示・検証用の実効 security。
+    pub effective_security: Value,
+    /// "root" | "operation" | "public"
+    pub security_source: String,
 }
 
 /// 1ドキュメント分の OpenAPI 仕様（schema 名 + 完全な OpenAPI JSON）。

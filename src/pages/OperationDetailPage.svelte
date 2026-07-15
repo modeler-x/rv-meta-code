@@ -10,13 +10,21 @@
     OperationSummary
   } from '@/modules/operation/types/OperationSummary';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
-  export let entity: EntitySummary;
+  // Entity Operation と Function Operation で共通利用する。entity は Entity 表示時のみ。
+  export let entity: EntitySummary | null = null;
+  // ヘッダ副題（Function Operation では Operation Group 表示名など）。entity 優先。
+  export let subtitle: string = '';
   export let operation: OperationSummary;
   // エンティティのカラム順（ordinal_position 順の column_name）。
   // jsonb はオブジェクトのキー順を正規化して失うため、この順序で表示を並べ替える。
   export let fieldOrder: string[] = [];
   // $ref（共通レスポンス等）を解決するための components。
   export let components: OpenApiComponents = {};
+
+  // 実効 security の Scheme 名（Root 合成後）。securitySource で継承/固有/公開を区別する。
+  $: effectiveSchemeNames = (operation.effectiveSecurity ?? []).flatMap((requirement) =>
+    Object.keys(requirement)
+  );
 
   function responseColor(code: string): string {
     if (code.startsWith('2')) return '#1a9e4b';
@@ -115,11 +123,43 @@
   <MethodBadge method={operation.method} />
   <div>
     <h2 class="font-mono text-xl font-bold">{operation.path}</h2>
-    <p class="text-xs text-[color:var(--rvc-muted)]">{entity.tableName} / {operation.operation}</p>
+    <p class="text-xs text-[color:var(--rvc-muted)]">{entity?.tableName ?? subtitle} / {operation.operation}</p>
   </div>
 </div>
 {#if operation.summary}<p class="mb-2 text-sm">{operation.summary}</p>{/if}
 {#if operation.description}<p class="mb-6 text-xs text-[color:var(--rvc-muted)]">{operation.description}</p>{/if}
+
+<SectionList title={$t('op_contract')}>
+  <SectionListRow>
+    <span class="text-xs text-[color:var(--rvc-muted)]">{$t('op_operation_id')}</span>
+    <span class="font-mono text-xs text-[color:var(--rvc-accent)]">{operation.operationId}</span>
+  </SectionListRow>
+  {#if (operation.tags ?? []).length}
+    <SectionListRow>
+      <span class="text-xs text-[color:var(--rvc-muted)]">{$t('op_tags')}</span>
+      <span class="flex flex-wrap gap-1">
+        {#each operation.tags as tag}
+          <span class="rounded bg-[color:var(--rvc-search)] px-2 py-0.5 text-[11px]">{tag}</span>
+        {/each}
+      </span>
+    </SectionListRow>
+  {/if}
+  <SectionListRow>
+    <span class="text-xs text-[color:var(--rvc-muted)]">{$t('op_security')}</span>
+    {#if operation.securitySource === 'public'}
+      <span class="text-xs">{$t('op_security_public')}</span>
+    {:else}
+      <span class="flex flex-wrap items-center gap-1">
+        {#each effectiveSchemeNames as scheme}
+          <span class="rounded bg-[color:var(--rvc-search)] px-2 py-0.5 font-mono text-[11px]">{scheme}</span>
+        {/each}
+        {#if operation.securitySource === 'root'}
+          <span class="text-[11px] text-[color:var(--rvc-muted)]">{$t('op_security_inherit')}</span>
+        {/if}
+      </span>
+    {/if}
+  </SectionListRow>
+</SectionList>
 
 {#if pathQueryParams.length}
   <SectionList title={$t('op_params')}>

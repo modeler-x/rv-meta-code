@@ -11,9 +11,12 @@ const entity: EntitySummary = {
 
 function baseOperation(overrides: Partial<OperationSummary>): OperationSummary {
   return {
-    id: 1, entityId: 1, operation: 'delete_many', method: 'POST', path: '/orders/delete_many',
+    id: 1, operationId: 'ordersDeleteMany', ownerKind: 'entity', entityId: 1, operationGroupId: null,
+    operation: 'delete_many', method: 'POST', path: '/orders/delete_many',
+    tags: ['orders'], security: null,
     summary: null, description: null, parameters: [], requestBody: null,
     responses: { '204': { description: 'No Content' } }, requiredFields: [],
+    effectiveSecurity: [], securitySource: 'root',
     ...overrides
   };
 }

@@ -32,16 +32,31 @@ export type OpenApiComponents = {
   securitySchemes?: Record<string, Record<string, unknown>>;
 };
 
+/** OpenAPI Security Requirement Object（scheme 名 → scope 配列）。 */
+export type SecurityRequirement = Record<string, string[]>;
+
+// Entity Operation と Function Operation の共通モデル。
+// id は operationRowId（DB内部整数ID）、operationId は OpenAPI 文字列ID。混同しない。
+// entityId と operationGroupId は同時に設定しない（ownerKind で所有者を示す）。
 export type OperationSummary = {
   id: number;
-  entityId: number;
+  operationId: string;
+  ownerKind: 'entity' | 'operationGroup';
+  entityId: number | null;
+  operationGroupId: number | null;
   operation: string;
   method: string;
   path: string;
+  tags: string[];
+  // DB 保存の Operation 固有 security。null は Root 継承、[] は認証不要。
+  security: SecurityRequirement[] | null;
   summary: string | null;
   description: string | null;
   parameters: OperationParameter[];
   requestBody: Record<string, unknown> | null;
   responses: Record<string, OperationResponse>;
   requiredFields: string[];
+  // Root security を合成した実効 security（表示・検証用）。
+  effectiveSecurity: SecurityRequirement[];
+  securitySource: 'root' | 'operation' | 'public';
 };
