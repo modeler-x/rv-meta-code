@@ -44,9 +44,14 @@ pub async fn generate_sdk(request: GenerateSdkRequest) -> Result<GenerateSdkResu
         )));
     }
 
+    // 実行する CLI プログラム。既定は PATH 上の openapi-generator-cli。
+    // env RV_OPENAPI_GENERATOR_CLI で絶対パス等へ差し替え可能（ローカル node_modules/.bin 等）。
+    let program =
+        std::env::var("RV_OPENAPI_GENERATOR_CLI").unwrap_or_else(|_| SUPPORTED_GENERATOR.to_string());
+
     // Generator 実行はブロッキング（Process + FS）。専用スレッドで動かす。
     tauri::async_runtime::spawn_blocking(move || {
-        let adapter = OpenApiGeneratorCliAdapter::new(SystemCommandRunner, SUPPORTED_GENERATOR, None);
+        let adapter = OpenApiGeneratorCliAdapter::new(SystemCommandRunner, program, None);
         adapter.generate(&request)
     })
     .await
