@@ -11,7 +11,7 @@ rv-metaの[Operation Group / Function Operation / OpenAPI変更仕様](../../../
 | 1 | Operation Group / Function Operation表示 | 完了（表示・共通DTO・Repository分離）。rv-meta Internal依存は据え置き（合意済み） |
 | 2 | OpenAPI検証 | Backend実装済み（`OpenApiValidator` Port + 既定実装 + `validate_openapi` Command + Rustテスト）。UI連携はPhase 4 |
 | 3 | SDK Generator Port / Adapter | Backend実装済み（`SdkGenerator` Port + `OpenApiGeneratorCliAdapter`（CommandRunner抽象・引数配列・出力先境界・version判定・timeout・一時ファイル）+ `generate_sdk` Command + Rustテスト）。CLI実導入とFacade/UIはPhase 4 |
-| 4 | SDK生成UI | 未着手 |
+| 4 | SDK生成UI | Frontend実装済み（`sdk` module: Repository/Service/ViewModel、`SdkGenerationPage`、Document詳細からの導線、i18n。処理順=取得→検証→成功時のみ生成→結果表示、View非invoke）。TypeScript Facade（Phase 4a）・CLI実導入・E2E は残 |
 
 ### Phase 1 の残ブロッカー
 

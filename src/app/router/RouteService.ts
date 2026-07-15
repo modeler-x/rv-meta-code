@@ -29,4 +29,8 @@ export class RouteService {
   ): AppRoute {
     return { name: 'functionOperationDetail', schemaName, groupKey, operationRowId, backRoute };
   }
+
+  createSdkGenerationRoute(schemaName: string, backRoute: AppRoute): AppRoute {
+    return { name: 'sdkGeneration', schemaName, backRoute };
+  }
 }

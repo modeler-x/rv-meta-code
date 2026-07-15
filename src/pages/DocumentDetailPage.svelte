@@ -7,21 +7,26 @@
   import type { EntityViewModel } from '@/modules/entity/viewmodels/EntityViewModel.svelte';
   import type { OperationGroupViewModel } from '@/modules/operation-group/viewmodels/OperationGroupViewModel.svelte';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
-  let { document, entityViewModel, operationGroupViewModel, onOpenEntity, onOpenGroup }: {
+  let { document, entityViewModel, operationGroupViewModel, onOpenEntity, onOpenGroup, onGenerateSdk }: {
     document: OpenApiDocumentSummary;
     entityViewModel: EntityViewModel;
     operationGroupViewModel: OperationGroupViewModel;
     onOpenEntity: (entityId: string) => void;
     onOpenGroup: (groupKey: string) => void;
+    onGenerateSdk: () => void;
   } = $props();
 </script>
 
 <div class="mb-6 flex items-center gap-3">
   <IconTile label="D" color="#399ecc" />
-  <div>
+  <div class="min-w-0 flex-1">
     <h2 class="text-xl font-bold">{document.title}</h2>
     <p class="text-xs text-[color:var(--rvc-muted)]">{$t('openapi')} / {document.version} · {document.schemaName}</p>
   </div>
+  <button
+    class="rounded-md bg-[color:var(--rvc-accent)] px-3 py-1.5 text-xs font-semibold text-white"
+    onclick={() => onGenerateSdk()}
+  >{$t('sdk_generate_button')}</button>
 </div>
 {#if document.description}<p class="mb-6 text-sm leading-6">{document.description}</p>{/if}
 

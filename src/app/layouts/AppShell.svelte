@@ -14,6 +14,7 @@
   import EntityDetailPage from '@/pages/EntityDetailPage.svelte';
   import OperationDetailPage from '@/pages/OperationDetailPage.svelte';
   import OperationGroupDetailPage from '@/pages/OperationGroupDetailPage.svelte';
+  import SdkGenerationPage from '@/pages/SdkGenerationPage.svelte';
   import RecentPage from '@/pages/RecentPage.svelte';
   import ProfilePage from '@/pages/ProfilePage.svelte';
   import ConnectionPage from '@/pages/ConnectionPage.svelte';
@@ -22,6 +23,7 @@
   import { DocumentViewModel } from '@/modules/document/viewmodels/DocumentViewModel.svelte';
   import { EntityViewModel } from '@/modules/entity/viewmodels/EntityViewModel.svelte';
   import { OperationGroupViewModel } from '@/modules/operation-group/viewmodels/OperationGroupViewModel.svelte';
+  import { SdkGenerationViewModel } from '@/modules/sdk/viewmodels/SdkGenerationViewModel.svelte';
   import { GenerationViewModel } from '@/modules/generation/viewmodels/GenerationViewModel.svelte';
   import { RecentViewModel } from '@/modules/recent/viewmodels/RecentViewModel.svelte';
   import type { RecentActivity } from '@/modules/recent/types/RecentActivity';
@@ -34,6 +36,7 @@
   const documentViewModel = new DocumentViewModel(appProvider.documentService);
   const entityViewModel = new EntityViewModel(appProvider.entityService);
   const operationGroupViewModel = new OperationGroupViewModel(appProvider.operationGroupService);
+  const sdkGenerationViewModel = new SdkGenerationViewModel(appProvider.sdkGenerationService);
   const generationViewModel = new GenerationViewModel(appProvider.generationService);
   const recentViewModel = new RecentViewModel(appProvider.recentService);
   // 生成成功後はドキュメントを再読込し、履歴に記録する。
@@ -82,6 +85,10 @@
     route = appProvider.routeService.createOperationGroupRoute(schemaName, groupKey, backRoute);
     void operationGroupViewModel.loadDetail(schemaName, groupKey);
   }
+  function openSdkGeneration(schemaName: string, backRoute: AppRoute): void {
+    route = appProvider.routeService.createSdkGenerationRoute(schemaName, backRoute);
+    sdkGenerationViewModel.reset();
+  }
   function openFunctionOperation(schemaName: string, groupKey: string, operationRowId: string, backRoute: AppRoute): void {
     route = appProvider.routeService.createFunctionOperationRoute(schemaName, groupKey, operationRowId, backRoute);
     const operation = operationGroupViewModel.findOperation(operationRowId);
@@ -121,7 +128,7 @@
   const selectedGroup = $derived(operationGroupViewModel.findGroup(route.groupKey));
   const selectedFunctionOperation = $derived(operationGroupViewModel.findOperation(route.operationRowId));
   const connectionLabel = $derived(currentConnection ? `${currentConnection.database} / ${currentConnection.host}` : $t('no_connection'));
-  const titleMap = $derived({ welcome: $t('title_welcome'), schema: $t('title_schemas'), documents: $t('title_documents'), documentDetail: selectedDocument?.title ?? $t('title_documents'), entities: $t('title_entities'), entityDetail: selectedEntity?.tableName ?? '', operationDetail: selectedOperation?.path ?? $t('sec_operations'), operationGroupDetail: selectedGroup?.displayName ?? $t('title_operation_group'), functionOperationDetail: selectedFunctionOperation?.path ?? $t('sec_operations'), recent: $t('title_recent'), profile: $t('title_profile'), connections: $t('title_connections'), servers: $t('title_servers') });
+  const titleMap = $derived({ welcome: $t('title_welcome'), schema: $t('title_schemas'), documents: $t('title_documents'), documentDetail: selectedDocument?.title ?? $t('title_documents'), entities: $t('title_entities'), entityDetail: selectedEntity?.tableName ?? '', operationDetail: selectedOperation?.path ?? $t('sec_operations'), operationGroupDetail: selectedGroup?.displayName ?? $t('title_operation_group'), functionOperationDetail: selectedFunctionOperation?.path ?? $t('sec_operations'), sdkGeneration: $t('title_sdk'), recent: $t('title_recent'), profile: $t('title_profile'), connections: $t('title_connections'), servers: $t('title_servers') });
   const title = $derived(titleMap[route.name]);
 </script>
 
@@ -138,7 +145,9 @@
         {:else if route.name === 'documents'}
           <DocumentListPage viewModel={documentViewModel} onOpenDocument={openDocument} />
         {:else if route.name === 'documentDetail' && selectedDocument}
-          <DocumentDetailPage document={selectedDocument} entityViewModel={entityViewModel} operationGroupViewModel={operationGroupViewModel} onOpenEntity={(entityId) => openEntity(entityId, route)} onOpenGroup={(groupKey) => openOperationGroup(selectedDocument.schemaName, groupKey, route)} />
+          <DocumentDetailPage document={selectedDocument} entityViewModel={entityViewModel} operationGroupViewModel={operationGroupViewModel} onOpenEntity={(entityId) => openEntity(entityId, route)} onOpenGroup={(groupKey) => openOperationGroup(selectedDocument.schemaName, groupKey, route)} onGenerateSdk={() => openSdkGeneration(selectedDocument.schemaName, route)} />
+        {:else if route.name === 'sdkGeneration'}
+          <SdkGenerationPage viewModel={sdkGenerationViewModel} schema={route.schemaName ?? ''} />
         {:else if route.name === 'entities'}
           <EntityListPage viewModel={entityViewModel} onOpenEntity={(entityId) => openEntity(entityId)} />
         {:else if route.name === 'entityDetail' && selectedEntity}
