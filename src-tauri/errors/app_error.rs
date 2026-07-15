@@ -66,8 +66,23 @@ impl AppError {
 }
 
 /// tokio-postgres のクエリエラーを DATABASE_ERROR へ統一変換する（`?` で伝播できる）。
+/// `Display`（{error}）はカテゴリ名（"db error" 等）しか返さず、実本文は cause 側の
+/// DbError にあるため、SQLSTATE・message・detail・hint を取り出して残す。
 impl From<tokio_postgres::Error> for AppError {
     fn from(error: tokio_postgres::Error) -> Self {
-        Self::database(&format!("query failed: {error}"))
+        let detail = match error.as_db_error() {
+            Some(db) => {
+                let mut text = format!("[{}] {}", db.code().code(), db.message());
+                if let Some(d) = db.detail() {
+                    text.push_str(&format!("; detail: {d}"));
+                }
+                if let Some(h) = db.hint() {
+                    text.push_str(&format!("; hint: {h}"));
+                }
+                text
+            }
+            None => error.to_string(),
+        };
+        Self::database(&format!("query failed: {detail}"))
     }
 }
