@@ -1,4 +1,5 @@
 pub mod current_connection;
+pub mod document_detail;
 pub mod documents;
 pub mod entities;
 pub mod entity_detail;

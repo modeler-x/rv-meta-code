@@ -3,8 +3,8 @@ use tokio_postgres::Row;
 
 use crate::dto::compile_schema_response::CompileSchemaResponse;
 use crate::dto::metadata_dto::{
-    DocumentDto, EntityDetailDto, EntitySummaryDto, FieldDto, OpenApiSpecDto, OperationDto,
-    SchemaSummaryDto,
+    DocumentDetailDto, DocumentDto, EntityDetailDto, EntitySummaryDto, FieldDto, OpenApiSpecDto,
+    OperationDto, SchemaSummaryDto,
 };
 use crate::dto::operation_group_dto::{OperationGroupDetailDto, OperationGroupSummaryDto};
 use crate::errors::app_error::AppError;
@@ -118,6 +118,56 @@ impl MetadataRepository {
                 updated_at: row.get(5),
             })
             .collect())
+    }
+
+    /// OpenAPI ドキュメント詳細（件数・割当Server・Root Security・定義元判別用 annotation つき）。
+    pub async fn document_detail(&self, schema: &str) -> Result<DocumentDetailDto, AppError> {
+        let client = pg::connect(&self.target).await?;
+        let row = client
+            .query_opt(
+                "SELECT d.id, d.schema_name, d.title, d.version, d.description, d.generation_mode,
+                        to_char(d.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
+                        (SELECT count(*) FROM rv_meta.openapi_operations o WHERE o.document_id = d.id AND o.entity_id IS NOT NULL),
+                        (SELECT count(*) FROM rv_meta.openapi_operations o WHERE o.document_id = d.id AND o.operation_group_id IS NOT NULL),
+                        (SELECT count(*) FROM rv_meta.openapi_operation_groups g WHERE g.document_id = d.id),
+                        rv_meta._get_openapi_servers(d.schema_name),
+                        rv_meta._get_openapi_security(d.schema_name),
+                        rv_meta._get_openapi_components(d.schema_name),
+                        d.annotation
+                 FROM rv_meta.openapi_documents d
+                 WHERE d.schema_name = $1",
+                &[&schema],
+            )
+            .await?
+            .ok_or_else(|| AppError::not_found("document not found"))?;
+
+        let components: Value = row.get(12);
+        let section_len = |name: &str| {
+            components
+                .get(name)
+                .and_then(Value::as_object)
+                .map(|m| m.len())
+                .unwrap_or(0)
+        };
+        let component_count =
+            (section_len("schemas") + section_len("responses") + section_len("securitySchemes")) as i64;
+
+        Ok(DocumentDetailDto {
+            id: row.get(0),
+            schema_name: row.get(1),
+            title: row.get(2),
+            version: row.get(3),
+            description: row.get(4),
+            generation_mode: row.get(5),
+            updated_at: row.get(6),
+            entity_operation_count: row.get(7),
+            function_operation_count: row.get(8),
+            operation_group_count: row.get(9),
+            component_count,
+            servers: row.get(10),
+            root_security: row.get(11),
+            annotation: row.get(13),
+        })
     }
 
     pub async fn list_entities(

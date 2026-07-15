@@ -78,6 +78,7 @@
     if (document) {
       void entityViewModel.loadEntities(document.schemaName);
       void operationGroupViewModel.loadGroups(document.schemaName);
+      void documentViewModel.loadDetail(document.schemaName);
       recentViewModel.record({ kind: 'document', title: document.title, subtitle: `${document.schemaName} / ${document.version}`, targetId: String(document.id), schemaName: document.schemaName });
     }
   }
@@ -145,7 +146,7 @@
         {:else if route.name === 'documents'}
           <DocumentListPage viewModel={documentViewModel} onOpenDocument={openDocument} />
         {:else if route.name === 'documentDetail' && selectedDocument}
-          <DocumentDetailPage document={selectedDocument} entityViewModel={entityViewModel} operationGroupViewModel={operationGroupViewModel} onOpenEntity={(entityId) => openEntity(entityId, route)} onOpenGroup={(groupKey) => openOperationGroup(selectedDocument.schemaName, groupKey, route)} onGenerateSdk={() => openSdkGeneration(selectedDocument.schemaName, route)} />
+          <DocumentDetailPage document={selectedDocument} documentViewModel={documentViewModel} entityViewModel={entityViewModel} operationGroupViewModel={operationGroupViewModel} onOpenEntity={(entityId) => openEntity(entityId, route)} onOpenGroup={(groupKey) => openOperationGroup(selectedDocument.schemaName, groupKey, route)} onGenerateSdk={() => openSdkGeneration(selectedDocument.schemaName, route)} />
         {:else if route.name === 'sdkGeneration'}
           <SdkGenerationPage viewModel={sdkGenerationViewModel} schema={route.schemaName ?? ''} />
         {:else if route.name === 'entities'}

@@ -1,6 +1,7 @@
 use crate::dto::compile_schema_response::CompileSchemaResponse;
 use crate::dto::metadata_dto::{
-    DocumentDto, EntityDetailDto, EntitySummaryDto, OpenApiSpecDto, OperationDto, SchemaSummaryDto,
+    DocumentDetailDto, DocumentDto, EntityDetailDto, EntitySummaryDto, OpenApiSpecDto, OperationDto,
+    SchemaSummaryDto,
 };
 use crate::dto::operation_group_dto::{OperationGroupDetailDto, OperationGroupSummaryDto};
 use crate::errors::app_error::AppError;
@@ -22,6 +23,10 @@ impl MetadataService {
 
     pub async fn list_documents(&self) -> Result<Vec<DocumentDto>, AppError> {
         self.repository.list_documents().await
+    }
+
+    pub async fn document_detail(&self, schema: &str) -> Result<DocumentDetailDto, AppError> {
+        self.repository.document_detail(schema).await
     }
 
     pub async fn list_entities(

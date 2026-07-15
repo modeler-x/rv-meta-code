@@ -45,6 +45,29 @@ pub struct DocumentDto {
     pub updated_at: String,
 }
 
+/// OpenAPI ドキュメント詳細（参照画面用）。各値の定義元判別のため annotation を含める。
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DocumentDetailDto {
+    pub id: i32,
+    pub schema_name: String,
+    pub title: String,
+    pub version: String,
+    pub description: Option<String>,
+    pub generation_mode: String,
+    pub updated_at: String,
+    pub entity_operation_count: i64,
+    pub function_operation_count: i64,
+    pub operation_group_count: i64,
+    pub component_count: i64,
+    /// 割り当てられた servers（OpenAPI servers 配列）。
+    pub servers: Value,
+    /// Root security requirements 配列。
+    pub root_security: Value,
+    /// @openapi-document 宣言（title/version/description/generationMode の SoT）。未宣言なら null。
+    pub annotation: Option<Value>,
+}
+
 /// エンティティ一覧の1行（フィールド数/オペレーション数を含む）。
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]

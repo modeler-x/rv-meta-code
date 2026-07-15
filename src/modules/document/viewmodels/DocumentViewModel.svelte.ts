@@ -1,6 +1,8 @@
 import type { DocumentService } from '@/modules/document/services/DocumentService';
 import type { OpenApiDocumentSummary } from '@/modules/document/types/OpenApiDocumentSummary';
 import type { OpenApiSpec } from '@/modules/document/types/OpenApiSpec';
+import type { DocumentDetail } from '@/modules/document/types/DocumentDetail';
+import type { ValidationReport } from '@/modules/sdk/types/SdkGeneration';
 
 export class DocumentViewModel {
   documents: OpenApiDocumentSummary[] = $state([]);
@@ -9,7 +11,33 @@ export class DocumentViewModel {
   previewSpecs: OpenApiSpec[] = $state([]);
   isExporting = $state(false);
 
+  // Document 詳細（参照画面）。
+  detail: DocumentDetail | null = $state(null);
+  isDetailLoading = $state(false);
+  validationReport: ValidationReport | null = $state(null);
+  isValidating = $state(false);
+
   constructor(private readonly documentService: DocumentService) {}
+
+  async loadDetail(schema: string): Promise<void> {
+    this.isDetailLoading = true;
+    this.detail = null;
+    this.validationReport = null;
+    const result = await this.documentService.loadDocumentDetail(schema);
+    if (result.success) {
+      this.detail = result.data;
+    }
+    this.isDetailLoading = false;
+  }
+
+  async validate(schema: string): Promise<void> {
+    this.isValidating = true;
+    const result = await this.documentService.validateOpenApi(schema);
+    if (result.success) {
+      this.validationReport = result.data;
+    }
+    this.isValidating = false;
+  }
 
   async loadDocuments(): Promise<void> {
     this.hasError = false;

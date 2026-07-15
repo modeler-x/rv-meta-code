@@ -26,6 +26,17 @@ class FakeDocumentRepo implements IDocumentRepository {
   async getSpecs(): Promise<Result<OpenApiSpec[]>> {
     return ok([]);
   }
+  async getDocumentDetail(): Promise<Result<import('@/modules/document/types/DocumentDetail').DocumentDetail>> {
+    return ok({
+      id: 1, schemaName: 'public', title: 'Doc A', version: 'v1', description: null,
+      generationMode: 'entity_and_function', updatedAt: '2024-01-01T00:00:00Z',
+      entityOperationCount: 2, functionOperationCount: 0, operationGroupCount: 0, componentCount: 1,
+      servers: [], rootSecurity: [], annotation: null
+    });
+  }
+  async validateOpenApi(): Promise<Result<import('@/modules/sdk/types/SdkGeneration').ValidationReport>> {
+    return ok({ isValid: true, errors: [], warnings: [] });
+  }
 }
 
 class FakeEntityRepo implements IEntityRepository {
