@@ -33,6 +33,32 @@ impl AppError {
     pub fn database(message: &str) -> Self {
         Self::new("DATABASE_ERROR", message)
     }
+
+    // --- SDK 生成に関するエラー分類（stderr 全文ではなく code + 要約で表す） ---
+
+    pub fn openapi_validation(message: &str) -> Self {
+        Self::new("OPENAPI_VALIDATION_ERROR", message)
+    }
+
+    pub fn generator_not_available(message: &str) -> Self {
+        Self::new("GENERATOR_NOT_AVAILABLE", message)
+    }
+
+    pub fn generator_version_unsupported(message: &str) -> Self {
+        Self::new("GENERATOR_VERSION_UNSUPPORTED", message)
+    }
+
+    pub fn sdk_output_invalid(message: &str) -> Self {
+        Self::new("SDK_OUTPUT_INVALID", message)
+    }
+
+    pub fn sdk_generation_failed(message: &str) -> Self {
+        Self::new("SDK_GENERATION_FAILED", message)
+    }
+
+    pub fn sdk_generation_timeout(message: &str) -> Self {
+        Self::new("SDK_GENERATION_TIMEOUT", message)
+    }
 }
 
 /// tokio-postgres のクエリエラーを DATABASE_ERROR へ統一変換する（`?` で伝播できる）。
