@@ -15,6 +15,8 @@ Rv Meta Code は、データベースの定義から API や SDK などを自動
 
 データモデルの参照先は rv-meta のテーブル定義である。
 
+Operation Group / Function Operation表示、OpenAPI検証、SDK Generator Adapterの変更仕様は[Operation Group / Function Operation表示 / SDK Generator変更仕様](./11_operation_group_sdk_spec.md)を参照する。
+
 ## 2. アプリケーション層構成
 
 本アプリケーションは、Tauri のプロセス分離モデルを基盤とした独自の MVC 風構成を採用する。
