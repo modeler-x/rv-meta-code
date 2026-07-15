@@ -37,6 +37,7 @@ impl OpenApiValidator for DefaultOpenApiValidator {
         check_structure(document, &mut errors);
         check_operations(document, &mut errors, &mut warnings);
         check_operation_id_uniqueness(document, &mut errors);
+        check_operation_id_group_prefix(document, &mut errors);
         check_refs_resolve(document, &mut errors);
         check_security_scheme_references(document, &mut errors);
 
@@ -213,6 +214,38 @@ fn check_operation_id_uniqueness(document: &Value, errors: &mut Vec<ValidationIs
                     format!("duplicate operationId \"{operation_id}\" within document"),
                 ));
             }
+        }
+    }
+}
+
+/// x-rv-operation-group を持つ Operation は、operationId が group key(lowerCamel) +
+/// 大文字始まりの method 名で始まることを検証する（例 auth + GetUser = authGetUser）。
+/// これにより SDK Service/Method を operationId から決定的に導出できる。
+fn check_operation_id_group_prefix(document: &Value, errors: &mut Vec<ValidationIssue>) {
+    for (path, method, op) in operations(document) {
+        let Some(key) = op
+            .get("x-rv-operation-group")
+            .and_then(|g| g.get("key"))
+            .and_then(Value::as_str)
+        else {
+            continue;
+        };
+        let Some(operation_id) = op.get("operationId").and_then(Value::as_str) else {
+            continue;
+        };
+        let prefix = crate::utils::naming::lower_camel(key);
+        let valid = match operation_id.strip_prefix(prefix.as_str()) {
+            Some(rest) => rest.chars().next().is_some_and(|c| c.is_ascii_uppercase()),
+            None => false,
+        };
+        if !valid {
+            errors.push(ValidationIssue::new(
+                &operation_pointer(&path, &method),
+                "operationId.groupPrefix",
+                format!(
+                    "operationId \"{operation_id}\" must start with the group key \"{prefix}\" followed by an uppercase method name"
+                ),
+            ));
         }
     }
 }
@@ -404,6 +437,36 @@ mod tests {
             json!({ "500": { "description": "err" } });
         let report = DefaultOpenApiValidator::new().validate(&doc);
         assert!(report.errors.iter().any(|e| e.rule == "operation.responses"));
+    }
+
+    fn grouped_document(operation_id: &str) -> Value {
+        json!({
+            "openapi": "3.0.3",
+            "info": { "title": "t", "version": "1" },
+            "paths": {
+                "/example/items": {
+                    "get": {
+                        "operationId": operation_id,
+                        "tags": ["Example"],
+                        "x-rv-operation-group": { "key": "example", "name": "Example" },
+                        "security": [],
+                        "responses": { "200": { "description": "OK" } }
+                    }
+                }
+            }
+        })
+    }
+
+    #[test]
+    fn operation_id_matching_group_prefix_passes() {
+        let report = DefaultOpenApiValidator::new().validate(&grouped_document("exampleGetItem"));
+        assert!(report.is_valid, "errors: {:?}", report.errors);
+    }
+
+    #[test]
+    fn operation_id_not_matching_group_prefix_is_error() {
+        let report = DefaultOpenApiValidator::new().validate(&grouped_document("itemGet"));
+        assert!(report.errors.iter().any(|e| e.rule == "operationId.groupPrefix"));
     }
 
     #[test]

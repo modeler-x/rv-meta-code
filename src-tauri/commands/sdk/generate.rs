@@ -1,3 +1,4 @@
+use crate::application::facade_generator::{FacadeGenerator, FacadeRequest};
 use crate::application::openapi_validator::{DefaultOpenApiValidator, OpenApiValidator};
 use crate::application::sdk_generator::SdkGenerator;
 use crate::dto::sdk_dto::{GenerateSdkRequest, GenerateSdkResult};
@@ -5,6 +6,7 @@ use crate::errors::app_error::AppError;
 use crate::infrastructure::openapi_generator_adapter::{
     OpenApiGeneratorCliAdapter, SystemCommandRunner,
 };
+use crate::infrastructure::typescript_facade_generator::TypeScriptFacadeGenerator;
 
 const SUPPORTED_GENERATOR: &str = "openapi-generator-cli";
 
@@ -95,9 +97,20 @@ pub async fn generate_sdk(request: GenerateSdkRequest) -> Result<GenerateSdkResu
     );
 
     // Generator 実行はブロッキング（Process + FS）。専用スレッドで動かす。
+    // 標準 SDK 生成に成功したら、TypeScript では Operation Group Facade を追加生成する。
     let result = tauri::async_runtime::spawn_blocking(move || {
         let adapter = OpenApiGeneratorCliAdapter::new(SystemCommandRunner, program, None);
-        adapter.generate(&request)
+        let mut generated = adapter.generate(&request)?;
+        if request.language.starts_with("typescript") {
+            let facade = TypeScriptFacadeGenerator::new().generate(&FacadeRequest {
+                openapi_document: request.openapi_document.clone(),
+                output_directory: generated.output_directory.clone(),
+            })?;
+            generated.generated_files.extend(facade.generated_files);
+            generated.generated_files.sort();
+            generated.generated_files.dedup();
+        }
+        Ok::<GenerateSdkResult, AppError>(generated)
     })
     .await
     .map_err(|error| AppError::sdk_generation_failed(&format!("task join failed: {error}")))?;

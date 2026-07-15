@@ -1,4 +1,5 @@
 pub mod connection_service;
+pub mod facade_generator;
 pub mod metadata_service;
 pub mod openapi_validator;
 pub mod sdk_generator;
