@@ -31,7 +31,10 @@ const exampleOperation: OperationSummary = {
   responses: { '200': { description: 'OK' } },
   requiredFields: [],
   effectiveSecurity: [{ apiKeyAuth: [] }],
-  securitySource: 'operation'
+  securitySource: 'operation',
+  functionSchema: 'rv_auth',
+  functionName: 'get_item',
+  identityArguments: 'p_item_id bigint'
 };
 
 const group: OperationGroupSummary = {

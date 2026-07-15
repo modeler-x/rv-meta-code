@@ -59,4 +59,8 @@ export type OperationSummary = {
   // Root security を合成した実効 security（表示・検証用）。
   effectiveSecurity: SecurityRequirement[];
   securitySource: 'root' | 'operation' | 'public';
+  // Function Operation の内部RPC（Source Function / Function Binding）。Entity では null。
+  functionSchema: string | null;
+  functionName: string | null;
+  identityArguments: string | null;
 };

@@ -23,6 +23,9 @@ fn function_operation() -> OperationDto {
         required_fields: vec![],
         effective_security: json!([{ "bearerAuth": [] }]),
         security_source: "operation".to_string(),
+        function_schema: Some("rv_auth".to_string()),
+        function_name: Some("get_user".to_string()),
+        identity_arguments: Some("p_user_id bigint".to_string()),
     }
 }
 

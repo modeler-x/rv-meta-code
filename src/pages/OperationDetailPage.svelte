@@ -9,9 +9,12 @@
     OperationResponse,
     OperationSummary
   } from '@/modules/operation/types/OperationSummary';
+  import { sdkCallPreview } from '@/modules/operation/sdkNaming';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
   // Entity Operation と Function Operation で共通利用する。entity は Entity 表示時のみ。
   export let entity: EntitySummary | null = null;
+  // Function Operation のとき、所属 Operation Group の key（SDK 呼び出しプレビュー導出用）。
+  export let groupKey: string | null = null;
   // ヘッダ副題（Function Operation では Operation Group 表示名など）。entity 優先。
   export let subtitle: string = '';
   export let operation: OperationSummary;
@@ -159,6 +162,18 @@
       </span>
     {/if}
   </SectionListRow>
+  {#if groupKey}
+    <SectionListRow>
+      <span class="text-xs text-[color:var(--rvc-muted)]">{$t('sdk_call')}</span>
+      <span class="font-mono text-xs text-[color:var(--rvc-accent)]">{sdkCallPreview(groupKey, operation.operationId)}</span>
+    </SectionListRow>
+  {/if}
+  {#if operation.functionSchema && operation.functionName}
+    <SectionListRow>
+      <span class="text-xs text-[color:var(--rvc-muted)]">{$t('op_source_function')}</span>
+      <span class="font-mono text-xs">{operation.functionSchema}.{operation.functionName}({operation.identityArguments ?? ''})</span>
+    </SectionListRow>
+  {/if}
 </SectionList>
 
 {#if pathQueryParams.length}

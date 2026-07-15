@@ -6,6 +6,7 @@
   import BusyOverlay from '@/shared/components/BusyOverlay.svelte';
   import type { OperationGroupSummary } from '@/modules/operation-group/types/OperationGroupSummary';
   import type { OperationSummary } from '@/modules/operation/types/OperationSummary';
+  import { sdkServiceName, sdkMethodName, isOperationIdPrefixValid } from '@/modules/operation/sdkNaming';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
 
   let {
@@ -30,15 +31,29 @@
 </div>
 {#if group.description}<p class="mb-6 text-sm leading-6">{group.description}</p>{/if}
 
+<SectionList title={$t('sdk_service_preview')}>
+  <SectionListRow>
+    <span class="text-xs text-[color:var(--rvc-muted)]">{$t('sdk_service')}</span>
+    <span class="font-mono text-xs text-[color:var(--rvc-accent)]">rv.{sdkServiceName(group.groupKey)}</span>
+  </SectionListRow>
+</SectionList>
+
+<div class="mt-6"></div>
 <SectionList title={`${$t('sec_operations')} / ${operations.length}`}>
   {#each operations as operation}
     <SectionListRow isButton on:click={() => onOpenOperation(String(operation.id))}>
       <MethodBadge method={operation.method} />
       <span class="min-w-0 flex-1">
         <span class="block font-mono font-semibold">{operation.path}</span>
-        <span class="block font-mono text-[11px] text-[color:var(--rvc-muted)]">{operation.operationId}</span>
+        <span class="block font-mono text-[11px] text-[color:var(--rvc-muted)]">
+          {operation.operationId}
+          {#if !isOperationIdPrefixValid(operation.operationId, group.groupKey)}
+            <span class="ml-1 text-[color:#e5484d]">⚠ {$t('sdk_prefix_invalid')}</span>
+          {/if}
+        </span>
         {#if operation.summary}<span class="block text-xs text-[color:var(--rvc-muted)]">{operation.summary}</span>{/if}
       </span>
+      <span class="font-mono text-[11px] text-[color:var(--rvc-accent)]">rv.{sdkServiceName(group.groupKey)}.{sdkMethodName(operation.operationId, group.groupKey)}()</span>
     </SectionListRow>
   {/each}
   {#if operations.length === 0}

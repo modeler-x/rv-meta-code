@@ -103,6 +103,10 @@ pub struct OperationDto {
     pub effective_security: Value,
     /// "root" | "operation" | "public"
     pub security_source: String,
+    /// Function Operation の内部RPC（openapi_function_bindings）。Entity Operation では NULL。
+    pub function_schema: Option<String>,
+    pub function_name: Option<String>,
+    pub identity_arguments: Option<String>,
 }
 
 /// 1ドキュメント分の OpenAPI 仕様（schema 名 + 完全な OpenAPI JSON）。

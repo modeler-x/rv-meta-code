@@ -32,9 +32,11 @@ const OPERATION_SELECT: &str = "
            COALESCE(o.security, rv_meta._get_openapi_security($1)),
            CASE WHEN o.security IS NULL THEN 'root'
                 WHEN jsonb_array_length(o.security) = 0 THEN 'public'
-                ELSE 'operation' END
+                ELSE 'operation' END,
+           fb.function_schema, fb.function_name, fb.identity_arguments
     FROM rv_meta.openapi_operations o
     LEFT JOIN rv_meta.openapi_entities e ON e.id = o.entity_id
+    LEFT JOIN rv_meta.openapi_function_bindings fb ON fb.operation_id = o.id
 ";
 
 /// 除外スキーマの glob を PostgreSQL の LIKE パターンへ変換する（`*`→`%`、`_`/`%`/`\` はエスケープ）。
@@ -379,6 +381,9 @@ fn operation_from_row(row: &Row) -> OperationDto {
         required_fields: row.get(15),
         effective_security: row.get(16),
         security_source: row.get(17),
+        function_schema: row.get(18),
+        function_name: row.get(19),
+        identity_arguments: row.get(20),
     }
 }
 

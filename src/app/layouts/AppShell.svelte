@@ -159,6 +159,7 @@
         {:else if route.name === 'functionOperationDetail' && selectedFunctionOperation}
           <OperationDetailPage
             subtitle={selectedGroup?.displayName ?? ''}
+            groupKey={selectedGroup?.groupKey ?? route.groupKey ?? ''}
             operation={selectedFunctionOperation}
             components={operationGroupViewModel.detail?.components ?? {}}
           />
