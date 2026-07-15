@@ -36,6 +36,7 @@ impl OpenApiValidator for DefaultOpenApiValidator {
 
         check_structure(document, &mut errors);
         check_operations(document, &mut errors, &mut warnings);
+        check_operation_id_present(document, &mut errors);
         check_operation_id_uniqueness(document, &mut errors);
         check_operation_id_group_prefix(document, &mut errors);
         check_refs_resolve(document, &mut errors);
@@ -114,11 +115,11 @@ fn check_operations(
         let pointer = operation_pointer(&path, &method);
 
         // responses は object で 2xx を1件以上持つ。
+        // `default` は成功／失敗いずれにもなり得る catch-all のため成功として数えない
+        // （SDK の method 戻り型を決定するには明示的な 2xx が要る）。
         match op.get("responses").and_then(Value::as_object) {
             Some(responses) if !responses.is_empty() => {
-                let has_success = responses
-                    .keys()
-                    .any(|code| code.starts_with('2') || code == "default");
+                let has_success = responses.keys().any(|code| code.starts_with('2'));
                 if !has_success {
                     errors.push(ValidationIssue::new(
                         &format!("{pointer}/responses"),
@@ -200,6 +201,24 @@ fn declared_path_params(op: &Value) -> HashSet<String> {
         }
     }
     out
+}
+
+/// 各 Operation が operationId を持つこと。SDK の method 名を決定的に導出するため必須。
+fn check_operation_id_present(document: &Value, errors: &mut Vec<ValidationIssue>) {
+    for (path, method, op) in operations(document) {
+        let has_id = op
+            .get("operationId")
+            .and_then(Value::as_str)
+            .map(|s| !s.trim().is_empty())
+            .unwrap_or(false);
+        if !has_id {
+            errors.push(ValidationIssue::new(
+                &operation_pointer(&path, &method),
+                "operationId.required",
+                "operation has no operationId (required for SDK method naming)",
+            ));
+        }
+    }
 }
 
 /// operationId の Document 内一意性。
@@ -437,6 +456,26 @@ mod tests {
             json!({ "500": { "description": "err" } });
         let report = DefaultOpenApiValidator::new().validate(&doc);
         assert!(report.errors.iter().any(|e| e.rule == "operation.responses"));
+    }
+
+    #[test]
+    fn default_only_response_is_not_treated_as_success() {
+        let mut doc = valid_auth_document();
+        doc["paths"]["/auth/users/{userId}"]["get"]["responses"] =
+            json!({ "default": { "description": "any" } });
+        let report = DefaultOpenApiValidator::new().validate(&doc);
+        assert!(report.errors.iter().any(|e| e.rule == "operation.responses"));
+    }
+
+    #[test]
+    fn missing_operation_id_is_error() {
+        let mut doc = valid_auth_document();
+        doc["paths"]["/auth/users/{userId}"]["get"]
+            .as_object_mut()
+            .unwrap()
+            .remove("operationId");
+        let report = DefaultOpenApiValidator::new().validate(&doc);
+        assert!(report.errors.iter().any(|e| e.rule == "operationId.required"));
     }
 
     fn grouped_document(operation_id: &str) -> Value {

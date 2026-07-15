@@ -5,7 +5,13 @@
   import IconTile from '@/shared/components/IconTile.svelte';
   import BusyOverlay from '@/shared/components/BusyOverlay.svelte';
   import type { SdkGenerationViewModel } from '@/modules/sdk/viewmodels/SdkGenerationViewModel.svelte';
+  import {
+    GENERATED_FILE_CATEGORY_ORDER,
+    groupGeneratedFiles,
+    type GeneratedFileCategory
+  } from '@/modules/sdk/generatedFileCategory';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
+  import type { MessageKey } from '@/shared/i18n/messages';
 
   let { viewModel, schema }: { viewModel: SdkGenerationViewModel; schema: string } = $props();
 
@@ -15,13 +21,21 @@
   const inputClass =
     'w-full rounded-md border border-[color:var(--rvc-border)] bg-white px-3 py-1.5 text-sm';
 
-  // 一覧は SDK ソース(src/**)に絞る。docs / README / package.json / dotfiles 等は件数のみ示す。
-  const displayFiles = $derived.by(() => {
-    const all = viewModel.result?.generatedFiles ?? [];
-    const source = all.filter((file) => file.startsWith('src/'));
-    return source.length > 0 ? source : all;
-  });
-  const auxCount = $derived((viewModel.result?.generatedFiles?.length ?? 0) - displayFiles.length);
+  const categoryLabelKey: Record<GeneratedFileCategory, MessageKey> = {
+    source: 'sdk_cat_source',
+    apiDocs: 'sdk_cat_api_docs',
+    modelDocs: 'sdk_cat_model_docs',
+    tests: 'sdk_cat_tests',
+    metadata: 'sdk_cat_metadata',
+    build: 'sdk_cat_build'
+  };
+
+  // 生成物を用途カテゴリへ分類し、空でないカテゴリだけ表示する。
+  const totalFiles = $derived(viewModel.result?.generatedFiles?.length ?? 0);
+  const grouped = $derived(groupGeneratedFiles(viewModel.result?.generatedFiles ?? []));
+  const shownCategories = $derived(
+    GENERATED_FILE_CATEGORY_ORDER.filter((c) => grouped[c].length > 0)
+  );
 
   let copied = $state(false);
   async function copyError(): Promise<void> {
@@ -133,23 +147,25 @@
 
 {#if viewModel.result}
   <div class="mt-6">
-    <SectionList title={`${$t('sdk_result')} / ${displayFiles.length}`}>
+    <SectionList title={`${$t('sdk_result')} / ${totalFiles}`}>
       <SectionListRow>
         <span class="text-xs text-[color:var(--rvc-muted)]">{$t('sdk_output')}</span>
         <span class="font-mono text-xs">{viewModel.result.outputDirectory}</span>
         <span class="flex-1"></span>
         <span class="text-xs text-[color:var(--rvc-muted)]">{viewModel.result.durationMs} ms</span>
       </SectionListRow>
-      {#each displayFiles as file}
-        <SectionListRow><span class="font-mono text-xs">{file}</span></SectionListRow>
-      {/each}
-      {#if displayFiles.length === 0}
+      {#if totalFiles === 0}
         <SectionListRow><span class="text-xs text-[color:var(--rvc-muted)]">{$t('sdk_no_files')}</span></SectionListRow>
       {/if}
-      {#if auxCount > 0}
-        <SectionListRow><span class="text-[11px] text-[color:var(--rvc-muted)]">{$t('sdk_aux_note').replace('{n}', String(auxCount))}</span></SectionListRow>
-      {/if}
     </SectionList>
+    {#each shownCategories as category}
+      <div class="mt-4"></div>
+      <SectionList title={`${$t(categoryLabelKey[category])} / ${grouped[category].length}`}>
+        {#each grouped[category] as file}
+          <SectionListRow><span class="font-mono text-xs">{file}</span></SectionListRow>
+        {/each}
+      </SectionList>
+    {/each}
   </div>
 {/if}
 

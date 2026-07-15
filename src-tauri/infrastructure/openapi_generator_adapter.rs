@@ -173,9 +173,16 @@ impl<R: CommandRunner> SdkGenerator for OpenApiGeneratorCliAdapter<R> {
         // 2. Generator の存在・version（NOT_AVAILABLE / VERSION_UNSUPPORTED を区別）。
         self.require_supported_version()?;
 
-        // 3. 出力先を作成。
-        std::fs::create_dir_all(&output)
-            .map_err(|error| AppError::sdk_output_invalid(&format!("cannot create output directory: {error}")))?;
+        // 3. 出力先の親を用意し、同一 FS 上に staging を作る。
+        //    Generator は staging へ生成し、成功時のみ output へ move する。
+        //    途中失敗（timeout / 非0終了）では staging を破棄し、output に部分生成物を残さない。
+        if let Some(parent) = output.parent() {
+            std::fs::create_dir_all(parent).map_err(|error| {
+                AppError::sdk_output_invalid(&format!("cannot create output directory: {error}"))
+            })?;
+        }
+        let staging = StagingDir::create(&output)
+            .map_err(|error| AppError::sdk_generation_failed(&format!("cannot create staging dir: {error}")))?;
 
         // 4. OpenAPI JSON を管理された一時ファイルへ書き出す（Drop で必ず削除）。
         let spec_json = serde_json::to_string(&request.openapi_document)
@@ -184,25 +191,33 @@ impl<R: CommandRunner> SdkGenerator for OpenApiGeneratorCliAdapter<R> {
             .map_err(|error| AppError::sdk_generation_failed(&format!("cannot write temp spec: {error}")))?;
         let spec_path = temp.path().to_string_lossy().to_string();
 
-        // 5. 引数配列で実行し、結果を分類する。
-        let args = build_generate_args(request, &spec_path, &output.to_string_lossy());
+        // 5. staging を出力先に指定して実行し、結果を分類する。
+        let args = build_generate_args(request, &spec_path, &staging.path().to_string_lossy());
         let start = Instant::now();
         let outcome = self.runner.run(&self.program, &args, self.timeout);
         let duration_ms = start.elapsed().as_millis() as u64;
 
         match outcome {
+            // staging は Drop で破棄される（output は未作成のまま）。
             RunOutcome::NotFound => Err(AppError::generator_not_available(&format!("{} not found", self.program))),
             RunOutcome::TimedOut => Err(AppError::sdk_generation_timeout(&format!(
                 "generation exceeded {} ms",
                 self.timeout.as_millis()
             ))),
-            RunOutcome::Completed { code: 0, stdout, .. } => Ok(GenerateSdkResult {
-                generator_id: self.generator_id.clone(),
-                output_directory: output.to_string_lossy().to_string(),
-                generated_files: list_generated_files(&output),
-                warnings: collect_warnings(&stdout),
-                duration_ms,
-            }),
+            RunOutcome::Completed { code: 0, stdout, .. } => {
+                // 6. 成功時のみ output へ昇格（同一 FS なら rename で atomic）。
+                let generated_files = list_generated_files(staging.path());
+                staging.promote(&output).map_err(|error| {
+                    AppError::sdk_generation_failed(&format!("cannot move generated files to output: {error}"))
+                })?;
+                Ok(GenerateSdkResult {
+                    generator_id: self.generator_id.clone(),
+                    output_directory: output.to_string_lossy().to_string(),
+                    generated_files,
+                    warnings: collect_warnings(&stdout),
+                    duration_ms,
+                })
+            }
             RunOutcome::Completed { code, stderr, .. } => Err(AppError::sdk_generation_failed(&format!(
                 "generator exited with code {code}: {}",
                 summarize(&stderr)
@@ -225,6 +240,10 @@ fn build_generate_args(request: &GenerateSdkRequest, spec_path: &str, output_dir
         .collect::<Vec<_>>()
         .join(",");
 
+    // 二段階検証。生成前に自前の RV Policy Validator（operationId/x-rv-operation-group/
+    // prefix 等の RV 固有規則）を通し、ここでは OpenAPI Generator 自身の標準 spec 検証を
+    // 有効にする（--skip-validate-spec を付けない）。非標準の x- 拡張は OpenAPI 上も
+    // 正当なため Generator の検証を妨げない。
     let mut args = vec![
         "generate".to_string(),
         "-i".to_string(),
@@ -233,9 +252,6 @@ fn build_generate_args(request: &GenerateSdkRequest, spec_path: &str, output_dir
         request.language.clone(),
         "-o".to_string(),
         output_dir.to_string(),
-        // OpenAPI Generator の spec 検証は無効化する。生成前に自前の OpenApiValidator で
-        // 検証済みであり、Generator 側は x- 拡張等の非標準フィールドに過度に厳格なため。
-        "--skip-validate-spec".to_string(),
     ];
     if !props_str.is_empty() {
         args.push("--additional-properties".to_string());
@@ -332,6 +348,84 @@ fn summarize(stderr: &str) -> String {
     }
 }
 
+/// 生成 staging ディレクトリ。出力先の兄弟として同一 FS 上に作り、成功時のみ output へ
+/// 昇格する。promote されなければ Drop で破棄され、部分生成物を output に残さない。
+struct StagingDir {
+    path: PathBuf,
+    keep: bool,
+}
+
+impl StagingDir {
+    fn create(final_target: &Path) -> std::io::Result<Self> {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let base = final_target
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| "sdk".to_string());
+        let name = format!(".{base}.rv-staging-{}-{}", std::process::id(), nanos);
+        let path = final_target
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .join(name);
+        std::fs::create_dir_all(&path)?;
+        Ok(Self { path, keep: false })
+    }
+
+    fn path(&self) -> &Path {
+        &self.path
+    }
+
+    /// staging を output へ移す。output 未存在なら rename（同一 FS で atomic）、
+    /// 既存ならファイル単位で merge move する。
+    fn promote(mut self, output: &Path) -> std::io::Result<()> {
+        if output.exists() {
+            move_tree(&self.path, output)?;
+            std::fs::remove_dir_all(&self.path)?;
+        } else {
+            std::fs::rename(&self.path, output)?;
+        }
+        self.keep = true;
+        Ok(())
+    }
+}
+
+impl Drop for StagingDir {
+    fn drop(&mut self) {
+        if !self.keep {
+            let _ = std::fs::remove_dir_all(&self.path);
+        }
+    }
+}
+
+/// from 配下を to へ再帰的に move（既存ファイルは上書き）。同一 FS なら rename、
+/// 異なる FS では copy+remove にフォールバックする。
+fn move_tree(from: &Path, to: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(to)?;
+    for entry in std::fs::read_dir(from)? {
+        let entry = entry?;
+        let src = entry.path();
+        let dst = to.join(entry.file_name());
+        if src.is_dir() {
+            move_tree(&src, &dst)?;
+        } else {
+            if let Some(parent) = dst.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            if dst.exists() {
+                std::fs::remove_file(&dst)?;
+            }
+            if std::fs::rename(&src, &dst).is_err() {
+                std::fs::copy(&src, &dst)?;
+                std::fs::remove_file(&src)?;
+            }
+        }
+    }
+    Ok(())
+}
+
 /// 一時 OpenAPI ファイル。Drop で必ず削除する。
 struct TempSpecFile {
     path: PathBuf,
@@ -414,7 +508,8 @@ mod tests {
         assert_eq!(args[4], "typescript-fetch");
         assert_eq!(args[5], "-o");
         assert_eq!(args[6], "/tmp/out");
-        assert!(args.contains(&"--skip-validate-spec".to_string()));
+        // Generator 標準検証を委譲するため --skip-validate-spec は付けない。
+        assert!(!args.contains(&"--skip-validate-spec".to_string()));
         let props_index = args.iter().position(|a| a == "--additional-properties").unwrap();
         assert!(args[props_index + 1].contains("npmName=rv-sdk"));
         assert!(args[props_index + 1].contains("npmVersion=1.2.3"));
@@ -532,6 +627,63 @@ mod tests {
         let result = a.generate(&request(&out.to_string_lossy())).unwrap();
         assert_eq!(result.generator_id, "openapi-generator-cli");
         assert_eq!(result.output_directory, out.to_string_lossy());
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// 生成成功時に `-o`（staging）へファイルを書く runner。promote 検証用。
+    struct WritingRunner;
+    impl CommandRunner for WritingRunner {
+        fn run(&self, _program: &str, args: &[String], _timeout: Duration) -> RunOutcome {
+            if args.first().map(String::as_str) == Some("version") {
+                return version_ok();
+            }
+            if let Some(i) = args.iter().position(|a| a == "-o") {
+                let dir = PathBuf::from(&args[i + 1]);
+                let _ = std::fs::create_dir_all(dir.join("src"));
+                let _ = std::fs::write(dir.join("src").join("index.ts"), "export {}");
+            }
+            RunOutcome::Completed { code: 0, stdout: "done".into(), stderr: String::new() }
+        }
+    }
+
+    #[test]
+    fn generate_promotes_staged_files_into_output() {
+        let root = unique_temp_dir("promote");
+        let out = root.join("sdk");
+        let a = OpenApiGeneratorCliAdapter::new(WritingRunner, "openapi-generator-cli", Some(root.clone()));
+        let result = a.generate(&request(&out.to_string_lossy())).unwrap();
+        // staging から output へ移動されている。
+        assert!(out.join("src").join("index.ts").exists());
+        assert!(result.generated_files.iter().any(|f| f == "src/index.ts"));
+        // staging（.sdk.rv-staging-*）が残っていない。
+        let leftover: Vec<_> = std::fs::read_dir(&root)
+            .unwrap()
+            .flatten()
+            .filter(|e| e.file_name().to_string_lossy().contains("rv-staging"))
+            .collect();
+        assert!(leftover.is_empty(), "staging dir must not remain");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn generate_failure_leaves_no_output_or_staging() {
+        let root = unique_temp_dir("nopartial");
+        let out = root.join("sdk");
+        let a = adapter(
+            FakeRunner {
+                version: version_ok(),
+                generate: RunOutcome::Completed { code: 1, stdout: String::new(), stderr: "boom".into() },
+            },
+            root.clone(),
+        );
+        let err = a.generate(&request(&out.to_string_lossy())).unwrap_err();
+        assert_eq!(err.code, "SDK_GENERATION_FAILED");
+        // 失敗時に output も staging も残さない。
+        assert!(!out.exists(), "output must not be created on failure");
+        let leftover: Vec<_> = std::fs::read_dir(&root)
+            .map(|it| it.flatten().filter(|e| e.file_name().to_string_lossy().contains("rv-staging")).collect())
+            .unwrap_or_default();
+        assert!(leftover.is_empty(), "staging dir must not remain on failure");
         let _ = std::fs::remove_dir_all(&root);
     }
 }
