@@ -15,6 +15,14 @@
   const inputClass =
     'w-full rounded-md border border-[color:var(--rvc-border)] bg-white px-3 py-1.5 text-sm';
 
+  // 一覧は SDK ソース(src/**)に絞る。docs / README / package.json / dotfiles 等は件数のみ示す。
+  const displayFiles = $derived.by(() => {
+    const all = viewModel.result?.generatedFiles ?? [];
+    const source = all.filter((file) => file.startsWith('src/'));
+    return source.length > 0 ? source : all;
+  });
+  const auxCount = $derived((viewModel.result?.generatedFiles?.length ?? 0) - displayFiles.length);
+
   let copied = $state(false);
   async function copyError(): Promise<void> {
     const text = `${viewModel.errorCode ?? ''}\n${viewModel.errorMessage ?? ''}`.trim();
@@ -125,18 +133,21 @@
 
 {#if viewModel.result}
   <div class="mt-6">
-    <SectionList title={`${$t('sdk_result')} / ${viewModel.result.generatedFiles.length}`}>
+    <SectionList title={`${$t('sdk_result')} / ${displayFiles.length}`}>
       <SectionListRow>
         <span class="text-xs text-[color:var(--rvc-muted)]">{$t('sdk_output')}</span>
         <span class="font-mono text-xs">{viewModel.result.outputDirectory}</span>
         <span class="flex-1"></span>
         <span class="text-xs text-[color:var(--rvc-muted)]">{viewModel.result.durationMs} ms</span>
       </SectionListRow>
-      {#each viewModel.result.generatedFiles as file}
+      {#each displayFiles as file}
         <SectionListRow><span class="font-mono text-xs">{file}</span></SectionListRow>
       {/each}
-      {#if viewModel.result.generatedFiles.length === 0}
+      {#if displayFiles.length === 0}
         <SectionListRow><span class="text-xs text-[color:var(--rvc-muted)]">{$t('sdk_no_files')}</span></SectionListRow>
+      {/if}
+      {#if auxCount > 0}
+        <SectionListRow><span class="text-[11px] text-[color:var(--rvc-muted)]">{$t('sdk_aux_note').replace('{n}', String(auxCount))}</span></SectionListRow>
       {/if}
     </SectionList>
   </div>
