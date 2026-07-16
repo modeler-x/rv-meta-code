@@ -45,7 +45,8 @@ export const messages = {
     f_name: 'Name', f_host: 'Host', f_port: 'Port', f_database: 'Database', f_user: 'User', f_password: 'Password', f_excluded_schemas: 'Excluded schemas',
     gen_confirm_title: 'Generate documentation?', gen_confirm_msg: 'Generate an OpenAPI document from schema "{schema}"? This queries the connected database.',
     gen_run: 'Generate', gen_running_title: 'Generating documentation', gen_done_title: 'Documentation generated', gen_err_title: 'Generation failed', gen_view_doc: 'View Document',
-    gen_err_detail: 'No tables or views were found in schema "{schema}".'
+    gen_err_detail: 'No tables or views were found in schema "{schema}".',
+    gen_err_hint: 'Hint', gen_err_conflicts: 'Conflicting routes (table CRUD vs @openapi function)'
   },
   ja: {
     nav_welcome: 'ようこそ', nav_schemas: 'スキーマ', nav_documents: 'ドキュメント', nav_entities: 'エンティティ', nav_functions: 'ファンクション', nav_recent: '最近', nav_help: 'ヘルプ',
@@ -91,7 +92,8 @@ export const messages = {
     f_name: '名前', f_host: 'ホスト', f_port: 'ポート', f_database: 'データベース', f_user: 'ユーザー', f_password: 'パスワード', f_excluded_schemas: '除外スキーマ',
     gen_confirm_title: 'ドキュメントを生成しますか？', gen_confirm_msg: 'スキーマ「{schema}」から OpenAPI ドキュメントを生成します。接続中のデータベースへクエリを発行します。',
     gen_run: '実行', gen_running_title: 'ドキュメントを生成中', gen_done_title: 'ドキュメントを生成しました', gen_err_title: '生成に失敗しました', gen_view_doc: 'ドキュメントを開く',
-    gen_err_detail: 'スキーマ「{schema}」にテーブル・ビューが見つかりませんでした。'
+    gen_err_detail: 'スキーマ「{schema}」にテーブル・ビューが見つかりませんでした。',
+    gen_err_hint: 'ヒント', gen_err_conflicts: '衝突しているルート（テーブル自動CRUD × @openapi関数）'
   }
 } satisfies Record<LanguageCode, Record<string, string>>;
 

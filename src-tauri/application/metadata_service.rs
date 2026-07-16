@@ -1,7 +1,7 @@
 use crate::dto::compile_schema_response::CompileSchemaResponse;
 use crate::dto::metadata_dto::{
     ComponentSummaryDto, DocumentDetailDto, DocumentDto, EntityDetailDto, EntitySummaryDto,
-    OpenApiSpecDto, OperationDto, SchemaSummaryDto,
+    OpenApiSpecDto, OperationDto, RouteConflictDto, SchemaSummaryDto,
 };
 use crate::dto::operation_group_dto::{OperationGroupDetailDto, OperationGroupSummaryDto};
 use crate::errors::app_error::AppError;
@@ -66,6 +66,13 @@ impl MetadataService {
 
     pub async fn compile(&self, schema: &str) -> Result<CompileSchemaResponse, AppError> {
         self.repository.compile(schema).await
+    }
+
+    pub async fn diagnose_route_conflicts(
+        &self,
+        schema: &str,
+    ) -> Result<Vec<RouteConflictDto>, AppError> {
+        self.repository.diagnose_route_conflicts(schema).await
     }
 
     pub async fn list_operation_groups(

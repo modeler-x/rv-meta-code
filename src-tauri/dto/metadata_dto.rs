@@ -22,6 +22,18 @@ impl CurrentConnectionDto {
     }
 }
 
+/// Entity 自動 CRUD と @openapi 関数の method+path 衝突の1件（診断結果）。
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RouteConflictDto {
+    pub method: String,
+    pub path: String,
+    pub function_name: String,
+    pub entity_table: String,
+    pub entity_resource: String,
+    pub recommendation: String,
+}
+
 /// スキーマ一覧の1行（スキーマ名/コメント/テーブル数/ビュー数）。
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]

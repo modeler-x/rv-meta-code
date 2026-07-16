@@ -6,7 +6,7 @@ use std::collections::HashSet;
 
 use crate::dto::metadata_dto::{
     ComponentSummaryDto, DocumentDetailDto, DocumentDto, EntityDetailDto, EntitySummaryDto, FieldDto,
-    OpenApiSpecDto, OperationDto, RelationDto, SchemaSummaryDto,
+    OpenApiSpecDto, OperationDto, RelationDto, RouteConflictDto, SchemaSummaryDto,
 };
 use crate::dto::operation_group_dto::{OperationGroupDetailDto, OperationGroupSummaryDto};
 use crate::errors::app_error::AppError;
@@ -432,6 +432,34 @@ impl MetadataRepository {
             document_id,
             operation_count,
         })
+    }
+
+    /// Entity 自動 CRUD と @openapi 関数の method+path 衝突を列挙する（副作用なし）。
+    /// compile が最初の衝突で止まって全体像が見えない問題を補い、function_only での解決を案内する。
+    pub async fn diagnose_route_conflicts(
+        &self,
+        schema: &str,
+    ) -> Result<Vec<RouteConflictDto>, AppError> {
+        let client = pg::connect(&self.target).await?;
+        let rows = client
+            .query(
+                "SELECT method, path, function_name, entity_table, entity_resource, recommendation
+                 FROM rv_meta.diagnose_route_conflicts($1)
+                 ORDER BY path, method",
+                &[&schema],
+            )
+            .await?;
+        Ok(rows
+            .iter()
+            .map(|row| RouteConflictDto {
+                method: row.get(0),
+                path: row.get(1),
+                function_name: row.get(2),
+                entity_table: row.get(3),
+                entity_resource: row.get(4),
+                recommendation: row.get(5),
+            })
+            .collect())
     }
 
     /// Operation Group 一覧（id / documentId / schema / Operation 件数つき）。

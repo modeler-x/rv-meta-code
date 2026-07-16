@@ -191,6 +191,6 @@
         {/if}
       </div>
     </section>
-    <GenerationSheet state={generationViewModel.state} schemaName={generationViewModel.currentSchemaName} totalCount={generationViewModel.totalCount} doneCount={generationViewModel.doneCount} progress={generationViewModel.progress} step={generationViewModel.step} detail={generationViewModel.resultDetail} errorMessage={generationViewModel.errorMessage} onCancel={() => generationViewModel.closeGeneration()} onRun={() => generationViewModel.runGeneration()} onOpenDocument={() => { generationViewModel.closeGeneration(); navigate('documents'); }} />
+    <GenerationSheet state={generationViewModel.state} schemaName={generationViewModel.currentSchemaName} totalCount={generationViewModel.totalCount} doneCount={generationViewModel.doneCount} progress={generationViewModel.progress} step={generationViewModel.step} detail={generationViewModel.resultDetail} errorMessage={generationViewModel.errorMessage} errorHint={generationViewModel.errorHint} routeConflicts={generationViewModel.routeConflicts} onCancel={() => generationViewModel.closeGeneration()} onRun={() => generationViewModel.runGeneration()} onOpenDocument={() => { generationViewModel.closeGeneration(); navigate('documents'); }} />
   </main>
 </MacWindow>

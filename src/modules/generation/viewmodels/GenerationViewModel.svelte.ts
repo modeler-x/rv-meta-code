@@ -1,4 +1,7 @@
-import type { GenerationService } from '@/modules/generation/services/GenerationService';
+import type {
+  GenerationService,
+  RouteConflict
+} from '@/modules/generation/services/GenerationService';
 import type { GenerationState } from '@/modules/generation/types/GenerationState';
 import type { SchemaSummary } from '@/modules/schema/types/SchemaSummary';
 
@@ -14,6 +17,10 @@ export class GenerationViewModel {
   doneCount = $state(0);
   resultDetail = $state('');
   errorMessage = $state('');
+  // 解決の手掛かり（Postgres の HINT）。compile 失敗時のみ設定。
+  errorHint = $state('');
+  // 失敗時に自動診断した method+path 衝突の一覧（UI で解決導線を示すため）。
+  routeConflicts: RouteConflict[] = $state([]);
 
   /** 生成成功後に呼ばれる（AppShell がドキュメント再読込などに使う）。 */
   onCompiled: (() => void) | null = null;
@@ -30,6 +37,8 @@ export class GenerationViewModel {
     this.step = 1;
     this.resultDetail = '';
     this.errorMessage = '';
+    this.errorHint = '';
+    this.routeConflicts = [];
     this.state = 'confirm';
   }
 
@@ -50,7 +59,12 @@ export class GenerationViewModel {
       const result = await this.generationService.compile(schemas[index].name);
       if (!result.success) {
         this.errorMessage = result.error.message;
+        this.errorHint = result.error.hint ?? '';
         this.state = 'error';
+        // 失敗スキーマの method+path 衝突を自動診断し、function_only での解決導線を示す。
+        // 診断自体の失敗は無視（本来のエラー表示を優先する）。
+        const diagnosis = await this.generationService.diagnoseRouteConflicts(schemas[index].name);
+        this.routeConflicts = diagnosis.success ? diagnosis.data : [];
         return;
       }
       totalOperations += result.data.operationCount;
@@ -73,5 +87,7 @@ export class GenerationViewModel {
     this.doneCount = 0;
     this.resultDetail = '';
     this.errorMessage = '';
+    this.errorHint = '';
+    this.routeConflicts = [];
   }
 }
