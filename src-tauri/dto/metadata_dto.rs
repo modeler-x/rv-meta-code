@@ -195,3 +195,36 @@ pub struct EntityDetailDto {
     /// components オブジェクト（schemas / responses / securitySchemes）。UI が $ref 解決に使う。
     pub components: Value,
 }
+
+/// manifest の宣言と公開関数の突き合わせ 1 件。
+/// state は declared / undeclared / orphaned。undeclared は既定拒否で非公開に
+/// なっているだけでエラーではないが、公開し忘れに気づく手がかりになる。
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ManifestCoverageDto {
+    pub function_key: String,
+    pub state: String,
+}
+
+/// manifest の静的検証 1 件。最初の 1 件で止めず全件が返る。
+/// location は manifest の構造をそのまま辿れる表記なので、編集箇所へのジャンプに使える。
+/// 例: operations."receive(p_payload jsonb, p_operation text)".publicRoutes[0].bind.p_payload
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ManifestDiagnosticDto {
+    pub severity: String,
+    pub location: String,
+    pub code: String,
+    pub message: String,
+    pub hint: Option<String>,
+}
+
+/// スキーマ 1 件分の manifest の状態。
+/// stored は DB の下書き。file 側との突き合わせは UI が digest で行う。
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ManifestDto {
+    pub schema_name: String,
+    pub manifest: Option<Value>,
+    pub updated_at: Option<String>,
+}

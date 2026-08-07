@@ -6,7 +6,8 @@ use std::collections::HashSet;
 
 use crate::dto::metadata_dto::{
     ComponentSummaryDto, DocumentDetailDto, DocumentDto, EntityDetailDto, EntitySummaryDto, FieldDto,
-    OpenApiSpecDto, OperationDto, RelationDto, RouteConflictDto, SchemaSummaryDto,
+    ManifestCoverageDto, ManifestDiagnosticDto, ManifestDto, OpenApiSpecDto, OperationDto,
+    RelationDto, RouteConflictDto, SchemaSummaryDto,
 };
 use crate::dto::operation_group_dto::{OperationGroupDetailDto, OperationGroupSummaryDto};
 use crate::errors::app_error::AppError;
@@ -522,6 +523,96 @@ impl MetadataRepository {
             components,
         })
     }
+
+    /// 公開関数と manifest の宣言の突き合わせ。
+    /// undeclared は既定拒否で非公開になっているだけでエラーではないが、
+    /// 公開し忘れに気づく手がかりとして UI が件数を出す。
+    pub async fn manifest_coverage(
+        &self,
+        schema: &str,
+    ) -> Result<Vec<ManifestCoverageDto>, AppError> {
+        let client = pg::connect(&self.target).await?;
+        let rows = client
+            .query(
+                "SELECT function_key, state FROM rv_meta.manifest_coverage($1) ORDER BY state, function_key",
+                &[&schema],
+            )
+            .await?;
+        Ok(rows
+            .iter()
+            .map(|row| ManifestCoverageDto {
+                function_key: row.get(0),
+                state: row.get(1),
+            })
+            .collect())
+    }
+
+    /// 登録済み manifest の静的検証。副作用なし。
+    /// 最初の 1 件で止めず全件返るので、UI は 1 回の実行で直す箇所を全部出せる。
+    pub async fn diagnose_manifest(
+        &self,
+        schema: &str,
+    ) -> Result<Vec<ManifestDiagnosticDto>, AppError> {
+        let client = pg::connect(&self.target).await?;
+        let rows = client
+            .query(
+                "SELECT severity, location, code, message, hint
+                 FROM rv_meta.diagnose_manifest($1)
+                 ORDER BY (severity <> 'error'), location",
+                &[&schema],
+            )
+            .await?;
+        Ok(rows
+            .iter()
+            .map(|row| ManifestDiagnosticDto {
+                severity: row.get(0),
+                location: row.get(1),
+                code: row.get(2),
+                message: row.get(3),
+                hint: row.get(4),
+            })
+            .collect())
+    }
+
+    /// DB に入っている下書き。未登録なら manifest が None で返る（エラーにしない）。
+    /// 「まだ作っていない」は UI が扱う正常な状態で、例外にすると分岐が増えるだけになる。
+    pub async fn get_manifest(&self, schema: &str) -> Result<ManifestDto, AppError> {
+        let client = pg::connect(&self.target).await?;
+        let row = client
+            .query_opt(
+                "SELECT manifest, updated_at::text FROM rv_meta.openapi_manifests WHERE schema_name = $1",
+                &[&schema],
+            )
+            .await?;
+        Ok(ManifestDto {
+            schema_name: schema.to_string(),
+            manifest: row.as_ref().map(|r| r.get(0)),
+            updated_at: row.as_ref().and_then(|r| r.get(1)),
+        })
+    }
+
+    /// カタログから骨子を起こし、保存済みの宣言へマージした結果を返す。**保存はしない。**
+    /// 推測した security（要認証）や tags が確認を経ずに確定しないよう、
+    /// 投入は人が確認してから load_manifest で行う。
+    pub async fn draft_manifest(&self, schema: &str) -> Result<Value, AppError> {
+        let client = pg::connect(&self.target).await?;
+        Ok(client
+            .query_one("SELECT rv_meta.draft_manifest($1)", &[&schema])
+            .await?
+            .get(0))
+    }
+
+    /// manifest を検証してから投入する。error があれば書かずに例外になる。
+    /// 壊れた宣言を保存すると、後続の compile が落ちたときに原因が投入時か
+    /// compile 時か分からなくなる。
+    pub async fn load_manifest(&self, schema: &str, manifest: &Value) -> Result<Value, AppError> {
+        let client = pg::connect(&self.target).await?;
+        Ok(client
+            .query_one("SELECT rv_meta.load_manifest($1, $2)", &[&schema, manifest])
+            .await?
+            .get(0))
+    }
+
 }
 
 fn field_from_row(row: &Row) -> FieldDto {

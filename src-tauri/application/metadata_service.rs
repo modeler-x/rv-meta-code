@@ -1,8 +1,10 @@
 use crate::dto::compile_schema_response::CompileSchemaResponse;
 use crate::dto::metadata_dto::{
     ComponentSummaryDto, DocumentDetailDto, DocumentDto, EntityDetailDto, EntitySummaryDto,
-    OpenApiSpecDto, OperationDto, RouteConflictDto, SchemaSummaryDto,
+    ManifestCoverageDto, ManifestDiagnosticDto, ManifestDto, OpenApiSpecDto, OperationDto,
+    RouteConflictDto, SchemaSummaryDto,
 };
+use serde_json::Value;
 use crate::dto::operation_group_dto::{OperationGroupDetailDto, OperationGroupSummaryDto};
 use crate::errors::app_error::AppError;
 use crate::repositories::metadata_repository::MetadataRepository;
@@ -73,6 +75,32 @@ impl MetadataService {
         schema: &str,
     ) -> Result<Vec<RouteConflictDto>, AppError> {
         self.repository.diagnose_route_conflicts(schema).await
+    }
+
+    pub async fn manifest_coverage(
+        &self,
+        schema: &str,
+    ) -> Result<Vec<ManifestCoverageDto>, AppError> {
+        self.repository.manifest_coverage(schema).await
+    }
+
+    pub async fn diagnose_manifest(
+        &self,
+        schema: &str,
+    ) -> Result<Vec<ManifestDiagnosticDto>, AppError> {
+        self.repository.diagnose_manifest(schema).await
+    }
+
+    pub async fn get_manifest(&self, schema: &str) -> Result<ManifestDto, AppError> {
+        self.repository.get_manifest(schema).await
+    }
+
+    pub async fn draft_manifest(&self, schema: &str) -> Result<Value, AppError> {
+        self.repository.draft_manifest(schema).await
+    }
+
+    pub async fn load_manifest(&self, schema: &str, manifest: &Value) -> Result<Value, AppError> {
+        self.repository.load_manifest(schema, manifest).await
     }
 
     pub async fn list_operation_groups(
