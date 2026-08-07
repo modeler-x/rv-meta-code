@@ -1,6 +1,7 @@
 export type AppRouteName =
   | 'welcome'
   | 'schema'
+  | 'manifest'
   | 'documents'
   | 'documentDetail'
   | 'entities'

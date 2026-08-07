@@ -8,8 +8,28 @@
   import { RowSelection } from '@/shared/selection/RowSelection.svelte';
   import type { SchemaViewModel } from '@/modules/schema/viewmodels/SchemaViewModel.svelte';
   import type { GenerationViewModel } from '@/modules/generation/viewmodels/GenerationViewModel.svelte';
+  import StatusBadge from '@/shared/components/StatusBadge.svelte';
+  import type { ManifestViewModel } from '@/modules/manifest/viewmodels/ManifestViewModel.svelte';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
-  let { viewModel, generationViewModel }: { viewModel: SchemaViewModel; generationViewModel: GenerationViewModel } = $props();
+  let {
+    viewModel,
+    generationViewModel,
+    manifestViewModel,
+    onOpenManifest
+  }: {
+    viewModel: SchemaViewModel;
+    generationViewModel: GenerationViewModel;
+    manifestViewModel: ManifestViewModel;
+    onOpenManifest?: (schemaName: string) => void;
+  } = $props();
+
+  // スキーマごとの宣言の埋まり具合。カタログでは件数だけを出し、中身はマニフェストで扱う。
+  const coverage = $derived(manifestViewModel.state.coverageBySchema);
+
+  /** 選択したスキーマの骨子をまとめて起こす。初版かどうかは区別しない。 */
+  async function draftSelected(): Promise<void> {
+    await manifestViewModel.draftMany(selection.selectedWithin(filteredNames));
+  }
 
   let query = $state('');
   // スキーマはスキーマ名で選択管理する。
@@ -42,6 +62,10 @@
     class="rounded-md bg-[color:var(--rvc-accent)] px-3 py-1.5 text-xs font-semibold text-white"
     onclick={generateSelected}
   >{$t('generate')}</button>
+  <button
+    class="rounded-md border border-[color:var(--rvc-border)] px-3 py-1.5 text-xs"
+    onclick={draftSelected}
+  >{$t('mf_draft')}</button>
 </SelectionToolbar>
 
 <SectionList title={`${$t('sec_schemas')} / ${filtered.length}`} detail={$t('schemas_hint')}>
@@ -57,8 +81,26 @@
       <button class="flex min-w-0 flex-1 items-center gap-3 text-left" onclick={() => selection.toggle(schema.name)}>
         <IconTile label="S" color="#0090a8" />
         <span class="min-w-0 flex-1"><span class="block font-mono font-semibold"><HighlightText text={schema.name} {query} /></span><span class="block text-xs text-[color:var(--rvc-muted)]"><HighlightText text={schema.comment ?? ''} {query} /></span></span>
+        {#if coverage[schema.name]}
+          {@const c = coverage[schema.name]}
+          <span class="flex shrink-0 items-center gap-1">
+            <StatusBadge label={`${c.declared} ${$t('cat_declared')}`} tone={c.declared > 0 ? 'success' : 'muted'} />
+            {#if c.undeclared > 0}
+              <StatusBadge label={`${c.undeclared} ${$t('cat_undeclared')}`} tone="muted" />
+            {/if}
+            {#if c.orphaned > 0}
+              <StatusBadge label={`${c.orphaned} ${$t('cat_orphaned')}`} tone="danger" />
+            {/if}
+          </span>
+        {/if}
         <span class="text-xs text-[color:var(--rvc-muted)]">{schema.tableCount} {$t('unit_tables')} / {schema.viewCount} {$t('unit_views')}</span>
       </button>
+      {#if onOpenManifest}
+        <button
+          class="shrink-0 rounded-md border border-[color:var(--rvc-border)] px-2.5 py-1 text-xs"
+          onclick={() => onOpenManifest?.(schema.name)}
+        >{$t('open')}</button>
+      {/if}
     </SectionListRow>
   {/each}
   {#if filtered.length === 0}

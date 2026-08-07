@@ -7,6 +7,7 @@
   const items = [
     { name: 'welcome', key: 'nav_welcome', icon: Home },
     { name: 'schema', key: 'nav_schemas', icon: Database },
+    { name: 'manifest', key: 'nav_manifest', icon: FileText },
     { name: 'documents', key: 'nav_documents', icon: FileText },
     { name: 'entities', key: 'nav_entities', icon: Table2 },
     { name: 'functions', key: 'nav_functions', icon: Workflow },

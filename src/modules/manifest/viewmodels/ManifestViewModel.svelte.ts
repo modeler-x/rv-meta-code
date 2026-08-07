@@ -5,6 +5,9 @@ import type {
   StoredManifest
 } from '@/modules/manifest/types/Manifest';
 
+/** カタログ行に出す、スキーマ 1 件分の宣言の埋まり具合。 */
+export type CoverageCounts = { declared: number; undeclared: number; orphaned: number };
+
 export type ManifestViewModelState = {
   isLoading: boolean;
   isSaving: boolean;
@@ -15,6 +18,8 @@ export type ManifestViewModelState = {
   diagnostics: ManifestDiagnostic[];
   /** 未保存の下書き。null なら stored と同じ。 */
   draft: unknown | null;
+  /** カタログ用。スキーマ名 → 件数。 */
+  coverageBySchema: Record<string, CoverageCounts>;
 };
 
 export class ManifestViewModel {
@@ -26,7 +31,8 @@ export class ManifestViewModel {
     stored: null,
     coverage: [],
     diagnostics: [],
-    draft: null
+    draft: null,
+    coverageBySchema: {}
   });
 
   constructor(private readonly manifestService: ManifestService) {}
@@ -41,6 +47,30 @@ export class ManifestViewModel {
 
   get orphanedCount(): number {
     return this.state.coverage.filter((c) => c.state === 'orphaned').length;
+  }
+
+  /**
+   * カタログ行に出す件数をまとめて引く。
+   * 1 件失敗しても他は出す。一覧が丸ごと空になるより、引けた分を見せるほうが役に立つ。
+   */
+  async loadCoverageFor(schemaNames: string[]): Promise<void> {
+    const next: Record<string, CoverageCounts> = {};
+    for (const name of schemaNames) {
+      const result = await this.manifestService.loadCoverage(name);
+      if (!result.success) continue;
+      const counts: CoverageCounts = { declared: 0, undeclared: 0, orphaned: 0 };
+      for (const row of result.data) counts[row.state] += 1;
+      next[name] = counts;
+    }
+    this.state.coverageBySchema = next;
+  }
+
+  /** 選択したスキーマの骨子をまとめて起こす。保存はしないので件数だけ引き直す。 */
+  async draftMany(schemaNames: string[]): Promise<void> {
+    for (const name of schemaNames) {
+      await this.manifestService.draftManifest(name);
+    }
+    await this.loadCoverageFor(schemaNames);
   }
 
   async load(schemaName: string): Promise<void> {

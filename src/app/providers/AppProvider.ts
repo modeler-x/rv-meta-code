@@ -1,6 +1,8 @@
 import { RouteService } from '@/app/router/RouteService';
 import { SchemaService } from '@/modules/schema/services/SchemaService';
 import { SchemaRepository } from '@/modules/schema/repositories/SchemaRepository';
+import { ManifestService } from '@/modules/manifest/services/ManifestService';
+import { ManifestRepository } from '@/modules/manifest/repositories/ManifestRepository';
 import { DocumentService } from '@/modules/document/services/DocumentService';
 import { DocumentRepository } from '@/modules/document/repositories/DocumentRepository';
 import { EntityService } from '@/modules/entity/services/EntityService';
@@ -23,6 +25,7 @@ import { RecentService } from '@/modules/recent/services/RecentService';
 export const appProvider = {
   routeService: new RouteService(),
   schemaService: new SchemaService(new SchemaRepository()),
+  manifestService: new ManifestService(new ManifestRepository()),
   documentService: new DocumentService(new DocumentRepository()),
   entityService: new EntityService(new EntityRepository()),
   operationGroupService: new OperationGroupService(new OperationGroupRepository()),
