@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { CircleHelp, Database, FileText, History, Home, Server, Table2, UserRound, Workflow } from 'lucide-svelte';
+  import { CircleHelp, Database, FileText, History, Home, Server, SlidersHorizontal, Table2, UserRound, Workflow } from 'lucide-svelte';
   import type { AppRoute, AppRouteName } from '@/app/router/AppRoute';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
   export let route: AppRoute;
@@ -8,6 +8,7 @@
     { name: 'welcome', key: 'nav_welcome', icon: Home },
     { name: 'schema', key: 'nav_schemas', icon: Database },
     { name: 'manifest', key: 'nav_manifest', icon: FileText },
+    { name: 'manifestOperations', key: 'nav_operations', icon: SlidersHorizontal },
     { name: 'documents', key: 'nav_documents', icon: FileText },
     { name: 'entities', key: 'nav_entities', icon: Table2 },
     { name: 'functions', key: 'nav_functions', icon: Workflow },
@@ -23,15 +24,15 @@
   <nav class="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-2">
     {#each items as item}
       {@const isActive = route.name === item.name || (item.name === 'entities' && route.name === 'entityDetail') || (item.name === 'functions' && (route.name === 'operationGroupDetail' || route.name === 'functionOperationDetail'))}
-      <button class={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm ${isActive ? 'bg-[color:var(--rvc-accent)] text-white' : ''}`} on:click={() => onNavigate(item.name)}>
+      <button data-testid="nav" data-nav={item.name} class={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm ${isActive ? 'bg-[color:var(--rvc-accent)] text-white' : ''}`} on:click={() => onNavigate(item.name)}>
         <svelte:component this={item.icon} size={16} /> {$t(item.key)}
       </button>
     {/each}
   </nav>
   <div class="shrink-0 border-t border-[color:var(--rvc-border)] p-3">
-    <button class={`flex w-full items-center gap-2 rounded-md px-2 py-2 hover:bg-[color:var(--rvc-hover)] ${route.name === 'help' ? 'bg-[color:var(--rvc-accent)] text-white' : ''}`} on:click={() => onNavigate('help')}><CircleHelp size={18} /> {$t('nav_help')}</button>
-    <button class="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-2 hover:bg-[color:var(--rvc-hover)]" on:click={() => onNavigate('profile')}><UserRound size={18} /> {$t('guest')}</button>
-    <button class="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-2 hover:bg-[color:var(--rvc-hover)]" on:click={() => onNavigate('connections')}><Database size={18} /> {$t('connections')}</button>
-    <button class="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-2 hover:bg-[color:var(--rvc-hover)]" on:click={() => onNavigate('servers')}><Server size={18} /> {$t('sv_servers')}</button>
+    <button data-testid="nav" data-nav="help" class={`flex w-full items-center gap-2 rounded-md px-2 py-2 hover:bg-[color:var(--rvc-hover)] ${route.name === 'help' ? 'bg-[color:var(--rvc-accent)] text-white' : ''}`} on:click={() => onNavigate('help')}><CircleHelp size={18} /> {$t('nav_help')}</button>
+    <button data-testid="nav" data-nav="profile" class="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-2 hover:bg-[color:var(--rvc-hover)]" on:click={() => onNavigate('profile')}><UserRound size={18} /> {$t('guest')}</button>
+    <button data-testid="nav" data-nav="connections" class="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-2 hover:bg-[color:var(--rvc-hover)]" on:click={() => onNavigate('connections')}><Database size={18} /> {$t('connections')}</button>
+    <button data-testid="nav" data-nav="servers" class="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-2 hover:bg-[color:var(--rvc-hover)]" on:click={() => onNavigate('servers')}><Server size={18} /> {$t('sv_servers')}</button>
   </div>
 </aside>

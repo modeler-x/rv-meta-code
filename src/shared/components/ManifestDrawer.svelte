@@ -1,0 +1,210 @@
+<script lang="ts">
+  import Drawer from '@/shared/components/Drawer.svelte';
+  import DiagnosticList from '@/shared/components/DiagnosticList.svelte';
+  import StatusBadge from '@/shared/components/StatusBadge.svelte';
+  import SegmentedControl from '@/shared/components/SegmentedControl.svelte';
+  import FieldGrid from '@/shared/components/FieldGrid.svelte';
+  import type { FieldSpec } from '@/shared/components/Field.svelte';
+  import type { ManifestViewModel } from '@/modules/manifest/viewmodels/ManifestViewModel.svelte';
+  import {
+    GENERATION_MODES,
+    OPERATION_ID_STYLES,
+    PROFILE_NAMES,
+    type ManifestProfile,
+    type ProfileName
+  } from '@/modules/manifest/types/Manifest';
+  import { translate as t } from '@/shared/i18n/i18n.svelte';
+
+  // 診断はスキーマ単位でしか意味を持たない指摘（未宣言の関数など）を含むので、
+  // operation ではなく manifest の責務として、ここに集約する。
+  // profiles / defaults も operation ごとに変わらないので同じ場所に置く。
+  let {
+    viewModel,
+    schemaName,
+    onClose,
+    onOpenOperation,
+    onOpenHelp
+  }: {
+    viewModel: ManifestViewModel;
+    schemaName: string;
+    onClose: () => void;
+    onOpenOperation: (functionKey: string) => void;
+    onOpenHelp?: (page: string) => void;
+  } = $props();
+
+  type Tab = 'diagnostics' | 'profiles' | 'defaults';
+  let tab = $state<Tab>('diagnostics');
+
+  const tabs = $derived([
+    { label: `${$t('mf_sec_diagnostics')} ${viewModel.state.diagnostics.length}`, value: 'diagnostics' },
+    { label: $t('mf_sec_profiles'), value: 'profiles' },
+    { label: $t('mf_sec_defaults'), value: 'defaults' }
+  ]);
+
+  const defaults = $derived(viewModel.state.draft?.defaults ?? {});
+  const tagsText = $derived((defaults.tags ?? []).join(', '));
+
+  /** profile 1 件分の項目。並びも既定も 1 箇所で決める。 */
+  function profileFields(profile: ProfileName): FieldSpec[] {
+    const value = viewModel.profileOf(profile) ?? {};
+    const inferred = $t('mf_inferred');
+    return [
+      { name: 'basePath', kind: 'text', value: value.basePath ?? '', placeholder: schemaName },
+      { name: 'title', kind: 'text', value: value.title ?? '', placeholder: inferred, mono: false },
+      { name: 'version', kind: 'text', value: value.version ?? '', placeholder: inferred },
+      {
+        name: 'generationMode',
+        kind: 'select',
+        value: value.generationMode ?? '',
+        options: [{ value: '', label: inferred }, ...GENERATION_MODES.map((m) => ({ value: m, label: m }))]
+      },
+      {
+        name: 'operationIdStyle',
+        kind: 'select',
+        value: value.operationIdStyle ?? '',
+        options: [{ value: '', label: inferred }, ...OPERATION_ID_STYLES.map((m) => ({ value: m, label: m }))]
+      },
+      {
+        name: 'stripPrefixArg',
+        kind: 'text',
+        label: 'naming.stripPrefix.arg',
+        value: value.naming?.stripPrefix?.arg ?? '',
+        placeholder: profile === 'bff' ? 'p_' : ''
+      }
+    ];
+  }
+
+  function setProfileField(profile: ProfileName, name: string, value: string): void {
+    if (name === 'stripPrefixArg') viewModel.setStripPrefixArg(profile, value);
+    else viewModel.setProfileField(profile, name as keyof ManifestProfile, value);
+  }
+
+  /** defaults は全 operation へマージされる。security は二択に畳んで JSON を書かせない。 */
+  const defaultFields = $derived<FieldSpec[]>([
+    { name: 'operationGroup', kind: 'text', value: defaults.operationGroup ?? '', mono: false },
+    { name: 'tags', kind: 'text', value: tagsText, placeholder: $t('mf_tags_placeholder'), mono: false },
+    {
+      name: 'security',
+      kind: 'select',
+      value: defaults.security ? (defaults.security.length === 0 ? 'public' : 'bearer') : '',
+      options: [
+        { value: '', label: $t('mf_security_unset') },
+        { value: 'bearer', label: $t('mf_security_bearer') },
+        { value: 'public', label: $t('mf_security_public') }
+      ]
+    }
+  ]);
+
+  function setDefaultField(name: string, value: string): void {
+    if (name === 'tags') return setTags(value);
+    if (name === 'security') {
+      viewModel.setDefault('security', value === 'public' ? [] : value === 'bearer' ? [{ bearerAuth: [] }] : undefined);
+      return;
+    }
+    viewModel.setDefault(name as 'operationGroup', value);
+  }
+
+  function toggleProfile(profile: ProfileName, on: boolean): void {
+    if (on) viewModel.addProfile(profile);
+    else viewModel.removeProfile(profile);
+  }
+
+  /** tags は配列だが、入力はカンマ区切りにする。JSON を書かせない。 */
+  function setTags(value: string): void {
+    const tags = value.split(',').map((tag) => tag.trim()).filter((tag) => tag.length > 0);
+    viewModel.setDefault('tags', tags.length > 0 ? tags : undefined);
+  }
+</script>
+
+<Drawer
+  title={schemaName}
+  testid="manifest-drawer"
+  dataAttributes={{ 'data-schema': schemaName }}
+  {onClose}
+>
+  {#snippet header()}
+    <span data-testid="dirty" data-dirty={viewModel.isDirty}>
+      {#if viewModel.isDirty}<StatusBadge label={$t('mf_unsaved_draft')} tone="warning" />{/if}
+    </span>
+  {/snippet}
+
+  <div class="mb-4">
+    <SegmentedControl options={tabs} value={tab} onSelect={(value) => (tab = value as Tab)} />
+  </div>
+
+  {#if tab === 'diagnostics'}
+    <DiagnosticList diagnostics={viewModel.state.diagnostics} onOpen={onOpenOperation} />
+    <p class="mt-3 text-[11px] text-[color:var(--rvc-muted)]">{$t('mf_diagnostics_hint')}</p>
+  {:else if tab === 'profiles'}
+    <div class="flex flex-col gap-4">
+      {#each PROFILE_NAMES as profile}
+        {@const value = viewModel.profileOf(profile)}
+        <div data-testid="profile-row" data-profile={profile} data-present={value != null} class="rounded-lg border border-[color:var(--rvc-border)] p-3">
+          <label class="flex items-center gap-2">
+            <input
+              type="checkbox"
+              data-testid="profile-toggle"
+              data-profile={profile}
+              class="checkbox checkbox-sm"
+              checked={value != null}
+              onchange={(event) => toggleProfile(profile, event.currentTarget.checked)}
+            />
+            <span class="font-mono text-xs font-semibold">{profile}</span>
+            <span class="text-[11px] text-[color:var(--rvc-muted)]">{$t(profile === 'bff' ? 'mf_profile_bff_hint' : 'mf_profile_postgrest_hint')}</span>
+          </label>
+
+          {#if value}
+            <div class="mt-3">
+              <FieldGrid
+                fields={profileFields(profile)}
+                testid="profile-field"
+                data={{ 'data-profile': profile }}
+                onInput={(name, next) => setProfileField(profile, name, next)}
+              />
+            </div>
+            {#if profile === 'postgrest'}
+              <p class="mt-2 text-[11px] text-[color:var(--rvc-muted)]">{$t('mf_strip_prefix_warning')}</p>
+            {/if}
+          {/if}
+        </div>
+      {/each}
+    </div>
+  {:else}
+    <FieldGrid fields={defaultFields} columns={3} testid="defaults-field" onInput={setDefaultField} />
+    <p class="mt-3 text-[11px] text-[color:var(--rvc-muted)]">{$t('mf_defaults_hint')}</p>
+  {/if}
+
+  {#if onOpenHelp}
+    <p class="mt-4 text-[11px] text-[color:var(--rvc-muted)]">
+      {$t('mf_format_help')}
+      <button
+        data-testid="open-help"
+        data-help-page="manifest-profiles"
+        class="font-semibold text-[color:var(--rvc-accent)]"
+        onclick={() => onOpenHelp('manifest-profiles')}
+      >{$t('mf_open_help')}</button>
+    </p>
+  {/if}
+
+  {#snippet footer()}
+    {#if viewModel.state.errorMessage}
+      <span data-testid="save-error" class="min-w-0 flex-1 truncate text-xs rvc-value" style="color:var(--rvc-danger)">
+        {viewModel.state.errorMessage}
+      </span>
+    {:else}
+      <span class="min-w-0 flex-1 truncate text-[11px] text-[color:var(--rvc-muted)]">{$t('mf_save_hint')}</span>
+    {/if}
+    <button
+      data-testid="revert-manifest"
+      class="rounded-md border border-[color:var(--rvc-border)] px-3 py-1.5 text-xs disabled:opacity-40"
+      disabled={!viewModel.isDirty}
+      onclick={() => viewModel.revert()}
+    >{$t('mf_revert')}</button>
+    <button
+      data-testid="save-manifest"
+      class="rounded-md bg-[color:var(--rvc-accent)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+      disabled={viewModel.state.isSaving || !viewModel.isDirty}
+      onclick={() => viewModel.save()}
+    >{$t('mf_save')}</button>
+  {/snippet}
+</Drawer>

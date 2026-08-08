@@ -42,7 +42,7 @@
   <button
     class="rounded-md border border-[color:var(--rvc-border)] px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
     disabled={documentViewModel.isValidating}
-    onclick={() => documentViewModel.validate(document.schemaName)}
+    onclick={() => documentViewModel.validate(document.schemaName, document.profile)}
   >{$t('sdk_validation')}</button>
   <button
     class="rounded-md border border-[color:var(--rvc-border)] px-3 py-1.5 text-xs font-semibold"
@@ -50,7 +50,7 @@
   >{$t('title_components')}</button>
   <button
     class="rounded-md border border-[color:var(--rvc-border)] px-3 py-1.5 text-xs font-semibold"
-    onclick={() => documentViewModel.exportSpecs([document.schemaName])}
+    onclick={() => documentViewModel.exportSpecs([document.schemaName], document.profile)}
   >{$t('export_spec')}</button>
   <button
     class="rounded-md bg-[color:var(--rvc-accent)] px-3 py-1.5 text-xs font-semibold text-white"

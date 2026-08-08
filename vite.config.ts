@@ -20,7 +20,26 @@ export default defineConfig({
     }
   },
   test: {
-    environment: 'jsdom',
-    include: ['tests/frontend/**/*.test.ts']
+    // 2 つに分ける。判断（ViewModel / Service）は DOM を要らないので node で走らせる。
+    // Svelte の transform と jsdom の起動が要るのは component だけで、
+    // 開発中に回すのは unit だけで足りる（実測 56s → 数秒）。
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'unit',
+          environment: 'node',
+          include: ['tests/unit/**/*.test.ts']
+        }
+      },
+      {
+        extends: true,
+        test: {
+          name: 'component',
+          environment: 'jsdom',
+          include: ['tests/component/**/*.test.ts']
+        }
+      }
+    ]
   }
 });

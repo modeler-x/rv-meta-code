@@ -13,8 +13,21 @@ body {
 button, input, select { font: inherit; }
 button { cursor: pointer; }
 
-/* UI テキスト（ラベル・一覧など）はネイティブアプリ風に選択ハイライトを抑制 */
-::selection { background: transparent; }
+/* 値は選択・コピーできる。人に「どこの何が」を伝える手段を奪わないため。
+   一方、ボタン・ナビ・チェックボックス行の文字はドラッグで反転すると操作の邪魔になるので、
+   操作要素だけ選択を止め、その中の値は .rvc-value で選択を戻す。 */
+::selection { background: var(--rvc-selection); color: inherit; }
+button, [role='button'], nav, aside, label, summary, .rvc-nonselectable {
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* 操作要素の中にある値（一覧行のスキーマ名・関数キーなど）は選択できる。
+   行全体がボタンでも、値だけは掴めるようにする。 */
+.rvc-value, .rvc-value * {
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
+}
 
 /* 編集可能な項目は通常のテキスト選択・カーソル操作を許可する。
    ドラッグ選択・ダブルクリック・選択範囲の DELETE などが可視かつ機能するようにする。 */

@@ -37,14 +37,16 @@ export class SdkGenerationService {
    */
   async runGeneration(
     schema: string,
+    profile: string,
     form: SdkGenerationForm
   ): Promise<Result<SdkGenerationOutcome>> {
-    const documentResult = await this.repository.getOpenApiDocument(schema);
+    // profile はここでも既定値を持たない。契約面が決まらなければ生成しない。
+    const documentResult = await this.repository.getOpenApiDocument(schema, profile);
     if (!documentResult.success) {
       return fail<SdkGenerationOutcome>(documentResult.error.code, documentResult.error.message);
     }
 
-    const validationResult = await this.repository.validateOpenApi(schema);
+    const validationResult = await this.repository.validateOpenApi(schema, profile);
     if (!validationResult.success) {
       return fail<SdkGenerationOutcome>(validationResult.error.code, validationResult.error.message);
     }

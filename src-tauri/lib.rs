@@ -28,7 +28,10 @@ use crate::commands::metadata::schemas::list_schemas;
 use crate::commands::metadata::set_read_only::set_read_only;
 use crate::commands::metadata::validate_openapi::validate_openapi;
 use crate::commands::schema::compile::compile_schema;
-use crate::commands::manifest::query::{diagnose_manifest, get_manifest, manifest_coverage};
+use crate::commands::metadata::openapi_profiles::openapi_profiles;
+use crate::commands::manifest::query::{
+    diagnose_manifest, get_manifest, manifest_coverage, manifest_functions,
+};
 use crate::commands::manifest::write::{draft_manifest, load_manifest};
 use crate::commands::schema::diagnose::diagnose_route_conflicts;
 use crate::commands::sdk::generate::generate_sdk;
@@ -61,7 +64,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             compile_schema,
             diagnose_route_conflicts,
+            openapi_profiles,
             manifest_coverage,
+            manifest_functions,
             diagnose_manifest,
             get_manifest,
             draft_manifest,

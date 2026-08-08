@@ -1,9 +1,7 @@
 <script lang="ts">
   import SectionList from '@/shared/components/SectionList.svelte';
-  import SectionListRow from '@/shared/components/SectionListRow.svelte';
-  import IconTile from '@/shared/components/IconTile.svelte';
+  import ListRow from '@/shared/components/ListRow.svelte';
   import SearchBox from '@/shared/components/SearchBox.svelte';
-  import HighlightText from '@/shared/components/HighlightText.svelte';
   import SelectionToolbar from '@/shared/components/SelectionToolbar.svelte';
   import SpecPreviewSheet from '@/shared/components/SpecPreviewSheet.svelte';
   import BusyOverlay from '@/shared/components/BusyOverlay.svelte';
@@ -19,16 +17,32 @@
     const needle = query.trim().toLowerCase();
     if (needle.length === 0) return viewModel.documents;
     return viewModel.documents.filter((document) =>
-      `${document.title} ${document.description ?? ''} ${document.schemaName} ${document.version}`.toLowerCase().includes(needle)
+      `${document.title} ${document.description ?? ''} ${document.schemaName} ${document.profile} ${document.version}`
+        .toLowerCase()
+        .includes(needle)
     );
   });
   const filteredIds = $derived(filtered.map((document) => document.id));
 
+  const selectedDocuments = $derived(filtered.filter((document) => selection.isSelected(document.id)));
+
+  /**
+   * 選んだ行の契約面。
+   *
+   * 契約面が混ざった選択では出力できない。postgrest と bff は別の契約で、
+   * 1 つの成果物へまとめると、どちらの形なのか読めないものが出る。
+   */
+  const selectedProfile = $derived.by(() => {
+    const profiles = new Set(selectedDocuments.map((document) => document.profile));
+    return profiles.size === 1 ? [...profiles][0] : null;
+  });
+
   function exportSelected(): void {
-    const schemas = filtered
-      .filter((document) => selection.isSelected(document.id))
-      .map((document) => document.schemaName);
-    void viewModel.exportSpecs(schemas);
+    if (!selectedProfile) return;
+    void viewModel.exportSpecs(
+      selectedDocuments.map((document) => document.schemaName),
+      selectedProfile
+    );
   }
 </script>
 
@@ -40,34 +54,34 @@
   selectedCount={selection.selectedWithin(filteredIds).length}
   onToggleAll={(on) => selection.setAll(filteredIds, on)}
 >
+  {#if selectedProfile === null}
+    <span data-testid="mixed-profile" class="text-[11px]" style="color:var(--rvc-warning)">{$t('doc_mixed_profile')}</span>
+  {/if}
   <button
-    class="rounded-md bg-[color:var(--rvc-accent)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-    disabled={viewModel.isExporting}
+    data-testid="export-spec"
+    class="rounded-md bg-[color:var(--rvc-accent)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+    disabled={viewModel.isExporting || selectedProfile === null}
     onclick={exportSelected}
   >{$t('export_spec')}</button>
 </SelectionToolbar>
 
-<SectionList title={`${$t('sec_documents')} / ${filtered.length}`}>
+<SectionList title={`${$t('sec_documents')} / ${filtered.length}`} detail={$t('doc_list_hint')}>
   {#each filtered as document}
-    <SectionListRow>
-      <input
-        type="checkbox"
-        class="checkbox checkbox-sm"
-        checked={selection.isSelected(document.id)}
-        aria-label={document.title}
-        onclick={(event) => event.stopPropagation()}
-        onchange={() => selection.toggle(document.id)}
-      />
-      <button class="flex min-w-0 flex-1 items-center gap-3 text-left" onclick={() => onOpenDocument(String(document.id))}>
-        <IconTile label="D" color="#399ecc" />
-        <span class="min-w-0 flex-1">
-          <span class="block font-semibold"><HighlightText text={document.title} {query} /></span>
-          <span class="block text-xs text-[color:var(--rvc-muted)]"><HighlightText text={document.description ?? ''} {query} /></span>
-          <span class="block font-mono text-[11px] text-[color:var(--rvc-muted)]"><HighlightText text={document.schemaName} {query} /> · {formatRelativeTime(document.updatedAt, $language)}</span>
-        </span>
-        <span class="rounded bg-[color:var(--rvc-search)] px-2 py-1 text-xs font-semibold text-[color:var(--rvc-accent)]">{document.version}</span>
-      </button>
-    </SectionListRow>
+    <ListRow
+      testid="document-row"
+      data={{ 'data-schema': document.schemaName, 'data-profile': document.profile }}
+      icon={{ label: 'D', color: '#399ecc' }}
+      title={document.title}
+      subtitle={`${document.schemaName} · ${document.description ?? ''} · ${formatRelativeTime(document.updatedAt, $language)}`}
+      {query}
+      badges={[
+        { testid: 'document-profile', label: document.profile, tone: document.profile === 'bff' ? 'success' : 'accent', data: { 'data-profile': document.profile } },
+        { testid: 'document-version', label: document.version, tone: 'muted' }
+      ]}
+      selected={selection.isSelected(document.id)}
+      onToggle={() => selection.toggle(document.id)}
+      onOpen={() => onOpenDocument(String(document.id))}
+    />
   {/each}
   {#if filtered.length === 0}
     <div class="px-4 py-6 text-sm text-[color:var(--rvc-muted)]">{$t('search_no_match')}</div>

@@ -6,7 +6,8 @@ use std::collections::HashSet;
 
 use crate::dto::metadata_dto::{
     ComponentSummaryDto, DocumentDetailDto, DocumentDto, EntityDetailDto, EntitySummaryDto, FieldDto,
-    ManifestCoverageDto, ManifestDiagnosticDto, ManifestDto, OpenApiSpecDto, OperationDto,
+    ManifestCoverageDto, ManifestDiagnosticDto, ManifestDto, ManifestFunctionDto,
+    OpenApiProfileDto, OpenApiSpecDto, OperationDto,
     RelationDto, RouteConflictDto, SchemaSummaryDto,
 };
 use crate::dto::operation_group_dto::{OperationGroupDetailDto, OperationGroupSummaryDto};
@@ -111,10 +112,12 @@ impl MetadataRepository {
         let client = pg::connect(&self.target).await?;
         let rows = client
             .query(
-                "SELECT id, schema_name, title, version, description,
+                // 1 スキーマが最大 2 契約を持つ。profile で畳まずに行として出す。
+                // 畳むと、公開契約と内部契約のどちらを見ているのか画面から読めなくなる。
+                "SELECT id, schema_name, profile, title, version, description,
                         to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')
                  FROM rv_meta.openapi_documents
-                 ORDER BY updated_at DESC, schema_name",
+                 ORDER BY updated_at DESC, schema_name, profile",
                 &[],
             )
             .await?;
@@ -123,36 +126,43 @@ impl MetadataRepository {
             .map(|row| DocumentDto {
                 id: row.get(0),
                 schema_name: row.get(1),
-                title: row.get(2),
-                version: row.get(3),
-                description: row.get(4),
-                updated_at: row.get(5),
+                profile: row.get(2),
+                title: row.get(3),
+                version: row.get(4),
+                description: row.get(5),
+                updated_at: row.get(6),
             })
             .collect())
     }
 
     /// OpenAPI ドキュメント詳細（件数・割当Server・Root Security・定義元判別用 annotation つき）。
-    pub async fn document_detail(&self, schema: &str) -> Result<DocumentDetailDto, AppError> {
+    /// profile は必須。省くと (schema, profile) が一意でないため 2 行返り、
+    /// どちらの契約を見ているのか決まらない。
+    pub async fn document_detail(
+        &self,
+        schema: &str,
+        profile: &str,
+    ) -> Result<DocumentDetailDto, AppError> {
         let client = pg::connect(&self.target).await?;
         let row = client
             .query_opt(
-                "SELECT d.id, d.schema_name, d.title, d.version, d.description, d.generation_mode,
+                "SELECT d.id, d.schema_name, d.profile, d.title, d.version, d.description, d.generation_mode,
                         to_char(d.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),
                         (SELECT count(*) FROM rv_meta.openapi_operations o WHERE o.document_id = d.id AND o.entity_id IS NOT NULL),
                         (SELECT count(*) FROM rv_meta.openapi_operations o WHERE o.document_id = d.id AND o.operation_group_id IS NOT NULL),
                         (SELECT count(*) FROM rv_meta.openapi_operation_groups g WHERE g.document_id = d.id),
-                        rv_meta._get_openapi_servers(d.schema_name),
-                        rv_meta._get_openapi_security(d.schema_name),
-                        rv_meta._get_openapi_components(d.schema_name),
+                        rv_meta._get_openapi_servers(d.schema_name, d.profile),
+                        rv_meta._get_openapi_security(d.schema_name, d.profile),
+                        rv_meta._get_openapi_components(d.schema_name, d.profile),
                         d.annotation
                  FROM rv_meta.openapi_documents d
-                 WHERE d.schema_name = $1",
-                &[&schema],
+                 WHERE d.schema_name = $1 AND d.profile = $2",
+                &[&schema, &profile],
             )
             .await?
             .ok_or_else(|| AppError::not_found("document not found"))?;
 
-        let components: Value = row.get(12);
+        let components: Value = row.get(13);
         let section_len = |name: &str| {
             components
                 .get(name)
@@ -166,18 +176,19 @@ impl MetadataRepository {
         Ok(DocumentDetailDto {
             id: row.get(0),
             schema_name: row.get(1),
-            title: row.get(2),
-            version: row.get(3),
-            description: row.get(4),
-            generation_mode: row.get(5),
-            updated_at: row.get(6),
-            entity_operation_count: row.get(7),
-            function_operation_count: row.get(8),
-            operation_group_count: row.get(9),
+            profile: row.get(2),
+            title: row.get(3),
+            version: row.get(4),
+            description: row.get(5),
+            generation_mode: row.get(6),
+            updated_at: row.get(7),
+            entity_operation_count: row.get(8),
+            function_operation_count: row.get(9),
+            operation_group_count: row.get(10),
             component_count,
-            servers: row.get(10),
-            root_security: row.get(11),
-            annotation: row.get(13),
+            servers: row.get(11),
+            root_security: row.get(12),
+            annotation: row.get(14),
         })
     }
 
@@ -266,7 +277,9 @@ impl MetadataRepository {
                         e.is_read_only
                  FROM rv_meta.openapi_entities e
                  JOIN rv_meta.openapi_documents d ON d.id = e.document_id
-                 WHERE $1::text IS NULL OR d.schema_name = $1
+                 -- Entity は postgrest 契約にしか出ない（bff は publicRoutes だけを公開する）。
+                 -- profile で絞らないと、bff を持つスキーマで行が重複する。
+                 WHERE d.profile = 'postgrest' AND ($1::text IS NULL OR d.schema_name = $1)
                  ORDER BY d.schema_name, e.resource_name",
                 &[&schema],
             )
@@ -368,21 +381,27 @@ impl MetadataRepository {
         Ok(operation_from_row(&row))
     }
 
+    /// profile は必須。既定値を置くと、指定し忘れた SDK 生成やリリース処理が
+    /// 黙って postgrest（内部契約）を拾い、内部専用の契約が公開 SDK として配られる。
     pub async fn get_openapi_specs(
         &self,
         schemas: &[String],
+        profile: &str,
     ) -> Result<Vec<OpenApiSpecDto>, AppError> {
         let client = pg::connect(&self.target).await?;
         let mut specs = Vec::with_capacity(schemas.len());
         for schema in schemas {
+            // 未宣言 22023 / 未 compile 55000 はそのまま失敗させる。
+            // 握り潰すと、空の SDK が黙って生成される。
             let row = client
-                .query_opt("SELECT rv_meta._get_openapi_document($1)", &[&schema])
+                .query_opt("SELECT rv_meta.openapi_document($1, $2)", &[&schema, &profile])
                 .await?;
             if let Some(row) = row {
                 let spec: Option<Value> = row.get(0);
                 if let Some(spec) = spec {
                     specs.push(OpenApiSpecDto {
                         schema_name: schema.clone(),
+                        profile: profile.to_string(),
                         spec,
                     });
                 }
@@ -543,6 +562,57 @@ impl MetadataRepository {
             .map(|row| ManifestCoverageDto {
                 function_key: row.get(0),
                 state: row.get(1),
+            })
+            .collect())
+    }
+
+    /// profile ごとの宣言状態と生成状態。UI と CI が同じ公開関数を見る。
+    pub async fn openapi_profiles(&self, schema: &str) -> Result<Vec<OpenApiProfileDto>, AppError> {
+        let client = pg::connect(&self.target).await?;
+        let rows = client
+            .query(
+                "SELECT profile, declared, compiled, operations, operation_groups, document_hash,
+                        to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')
+                 FROM rv_meta.openapi_profiles($1) ORDER BY profile",
+                &[&schema],
+            )
+            .await?;
+        Ok(rows
+            .iter()
+            .map(|row| OpenApiProfileDto {
+                schema_name: schema.to_string(),
+                profile: row.get(0),
+                declared: row.get(1),
+                compiled: row.get(2),
+                operations: row.get(3),
+                operation_groups: row.get(4),
+                document_hash: row.get(5),
+                updated_at: row.get(6),
+            })
+            .collect())
+    }
+
+    /// 宣言の編集に要る情報（引数の並び・DEFAULT の有無・関数の COMMENT）。
+    /// 引数を DB から引くのは、bind のキーが DB 上の引数名でなければならないため。
+    pub async fn manifest_functions(
+        &self,
+        schema: &str,
+    ) -> Result<Vec<ManifestFunctionDto>, AppError> {
+        let client = pg::connect(&self.target).await?;
+        let rows = client
+            .query(
+                "SELECT function_key, state, comment_body, arguments
+                 FROM rv_meta.manifest_functions($1) ORDER BY function_key",
+                &[&schema],
+            )
+            .await?;
+        Ok(rows
+            .iter()
+            .map(|row| ManifestFunctionDto {
+                function_key: row.get(0),
+                state: row.get(1),
+                comment: row.get(2),
+                arguments: row.get(3),
             })
             .collect())
     }

@@ -79,10 +79,11 @@ class FakeRepo implements ISdkGenerationRepository {
   }
 }
 
+// localStorage を使うため jsdom が要る。判断は ViewModel だが、保存先がブラウザ API。
 describe('SdkGenerationService', () => {
   it('does not generate when the OpenAPI document is invalid', async () => {
     const repo = new FakeRepo(invalidReport);
-    const outcome = await new SdkGenerationService(repo).runGeneration('rv_auth', form);
+    const outcome = await new SdkGenerationService(repo).runGeneration('rv_auth', 'postgrest', form);
     expect(outcome.success).toBe(true);
     if (outcome.success) expect(outcome.data.kind).toBe('invalid');
     expect(repo.generateCalls).toBe(0);
@@ -90,7 +91,7 @@ describe('SdkGenerationService', () => {
 
   it('generates when valid and returns the result', async () => {
     const repo = new FakeRepo(validReport);
-    const outcome = await new SdkGenerationService(repo).runGeneration('rv_auth', form);
+    const outcome = await new SdkGenerationService(repo).runGeneration('rv_auth', 'postgrest', form);
     expect(outcome.success).toBe(true);
     if (outcome.success && outcome.data.kind === 'generated') {
       expect(outcome.data.result.generatedFiles).toEqual(['api.ts']);
@@ -102,7 +103,7 @@ describe('SdkGenerationService', () => {
 
   it('propagates a generator error (e.g. GENERATOR_NOT_AVAILABLE)', async () => {
     const repo = new FakeRepo(validReport, fail('GENERATOR_NOT_AVAILABLE', 'openapi-generator-cli not found'));
-    const outcome = await new SdkGenerationService(repo).runGeneration('rv_auth', form);
+    const outcome = await new SdkGenerationService(repo).runGeneration('rv_auth', 'postgrest', form);
     expect(outcome.success).toBe(false);
     if (!outcome.success) expect(outcome.error.code).toBe('GENERATOR_NOT_AVAILABLE');
   });
@@ -112,7 +113,7 @@ describe('SdkGenerationViewModel phases', () => {
   it('goes to invalid phase without generating', async () => {
     const vm = new SdkGenerationViewModel(new SdkGenerationService(new FakeRepo(invalidReport)));
     vm.outputDirectory = '/tmp/out';
-    await vm.run('rv_auth');
+    await vm.run('rv_auth', 'postgrest');
     expect(vm.phase).toBe('invalid');
     expect(vm.report?.isValid).toBe(false);
     expect(vm.result).toBeNull();
@@ -121,7 +122,7 @@ describe('SdkGenerationViewModel phases', () => {
   it('goes to done phase with a result on success', async () => {
     const vm = new SdkGenerationViewModel(new SdkGenerationService(new FakeRepo(validReport)));
     vm.outputDirectory = '/tmp/out';
-    await vm.run('rv_auth');
+    await vm.run('rv_auth', 'postgrest');
     expect(vm.phase).toBe('done');
     expect(vm.result?.generatedFiles).toEqual(['api.ts']);
   });
@@ -131,7 +132,7 @@ describe('SdkGenerationViewModel phases', () => {
       new SdkGenerationService(new FakeRepo(validReport, fail('GENERATOR_NOT_AVAILABLE', 'not found')))
     );
     vm.outputDirectory = '/tmp/out';
-    await vm.run('rv_auth');
+    await vm.run('rv_auth', 'postgrest');
     expect(vm.phase).toBe('error');
     expect(vm.errorCode).toBe('GENERATOR_NOT_AVAILABLE');
   });

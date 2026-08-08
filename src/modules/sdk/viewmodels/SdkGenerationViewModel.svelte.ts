@@ -184,7 +184,8 @@ export class SdkGenerationViewModel {
   }
 
   /** 固定処理順で実行する: 取得 → 検証 → 成功時のみ生成 → 結果反映。 */
-  async run(schema: string): Promise<void> {
+  /** profile は必須。契約面が決まらなければ生成しない。 */
+  async run(schema: string, profile: string): Promise<void> {
     if (!this.canRun || this.isRunning) return;
     // 手入力の出力先も記憶する。
     saveOutputDirectory(this.outputDirectory);
@@ -202,7 +203,7 @@ export class SdkGenerationViewModel {
       outputDirectory: this.outputDirectory
     };
 
-    const outcome = await this.sdkGenerationService.runGeneration(schema, form);
+    const outcome = await this.sdkGenerationService.runGeneration(schema, profile, form);
     if (!outcome.success) {
       this.phase = 'error';
       this.errorCode = outcome.error.code;

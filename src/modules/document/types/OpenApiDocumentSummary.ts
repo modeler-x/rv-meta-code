@@ -2,6 +2,11 @@
 export type OpenApiDocumentSummary = {
   id: number;
   schemaName: string;
+  /**
+   * 契約面。1 スキーマが postgrest と bff を持つので、行は (schema, profile) で一意。
+   * postgrest は PostgREST が実際に受ける形、bff は外部へ公開する形。
+   */
+  profile: string;
   title: string;
   version: string;
   description: string | null;

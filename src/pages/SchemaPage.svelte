@@ -1,14 +1,11 @@
 <script lang="ts">
   import SectionList from '@/shared/components/SectionList.svelte';
-  import SectionListRow from '@/shared/components/SectionListRow.svelte';
-  import IconTile from '@/shared/components/IconTile.svelte';
+  import ListRow from '@/shared/components/ListRow.svelte';
   import SearchBox from '@/shared/components/SearchBox.svelte';
-  import HighlightText from '@/shared/components/HighlightText.svelte';
   import SelectionToolbar from '@/shared/components/SelectionToolbar.svelte';
   import { RowSelection } from '@/shared/selection/RowSelection.svelte';
   import type { SchemaViewModel } from '@/modules/schema/viewmodels/SchemaViewModel.svelte';
   import type { GenerationViewModel } from '@/modules/generation/viewmodels/GenerationViewModel.svelte';
-  import StatusBadge from '@/shared/components/StatusBadge.svelte';
   import type { ManifestViewModel } from '@/modules/manifest/viewmodels/ManifestViewModel.svelte';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
   let {
@@ -23,12 +20,14 @@
     onOpenManifest?: (schemaName: string) => void;
   } = $props();
 
-  // スキーマごとの宣言の埋まり具合。カタログでは件数だけを出し、中身はマニフェストで扱う。
-  const coverage = $derived(manifestViewModel.state.coverageBySchema);
+  // ここで出すのは「マニフェストがあるか」だけ。宣言が何件埋まっているかは
+  // マニフェストの責務なので、スキーマの一覧には持ち込まない。
+  const withManifest = $derived(
+    new Set(manifestViewModel.state.overviews.filter((row) => row.hasManifest).map((row) => row.schemaName))
+  );
 
-  /** 選択したスキーマの骨子をまとめて起こす。初版かどうかは区別しない。 */
-  async function draftSelected(): Promise<void> {
-    await manifestViewModel.draftMany(selection.selectedWithin(filteredNames));
+  function hasManifest(name: string): boolean {
+    return withManifest.has(name);
   }
 
   let query = $state('');
@@ -62,46 +61,29 @@
     class="rounded-md bg-[color:var(--rvc-accent)] px-3 py-1.5 text-xs font-semibold text-white"
     onclick={generateSelected}
   >{$t('generate')}</button>
-  <button
-    class="rounded-md border border-[color:var(--rvc-border)] px-3 py-1.5 text-xs"
-    onclick={draftSelected}
-  >{$t('mf_draft')}</button>
 </SelectionToolbar>
 
 <SectionList title={`${$t('sec_schemas')} / ${filtered.length}`} detail={$t('schemas_hint')}>
   {#each filtered as schema}
-    <SectionListRow>
-      <input
-        type="checkbox"
-        class="checkbox checkbox-sm"
-        checked={selection.isSelected(schema.name)}
-        aria-label={schema.name}
-        onchange={() => selection.toggle(schema.name)}
-      />
-      <button class="flex min-w-0 flex-1 items-center gap-3 text-left" onclick={() => selection.toggle(schema.name)}>
-        <IconTile label="S" color="#0090a8" />
-        <span class="min-w-0 flex-1"><span class="block font-mono font-semibold"><HighlightText text={schema.name} {query} /></span><span class="block text-xs text-[color:var(--rvc-muted)]"><HighlightText text={schema.comment ?? ''} {query} /></span></span>
-        {#if coverage[schema.name]}
-          {@const c = coverage[schema.name]}
-          <span class="flex shrink-0 items-center gap-1">
-            <StatusBadge label={`${c.declared} ${$t('cat_declared')}`} tone={c.declared > 0 ? 'success' : 'muted'} />
-            {#if c.undeclared > 0}
-              <StatusBadge label={`${c.undeclared} ${$t('cat_undeclared')}`} tone="muted" />
-            {/if}
-            {#if c.orphaned > 0}
-              <StatusBadge label={`${c.orphaned} ${$t('cat_orphaned')}`} tone="danger" />
-            {/if}
-          </span>
-        {/if}
-        <span class="text-xs text-[color:var(--rvc-muted)]">{schema.tableCount} {$t('unit_tables')} / {schema.viewCount} {$t('unit_views')}</span>
-      </button>
-      {#if onOpenManifest}
-        <button
-          class="shrink-0 rounded-md border border-[color:var(--rvc-border)] px-2.5 py-1 text-xs"
-          onclick={() => onOpenManifest?.(schema.name)}
-        >{$t('open')}</button>
-      {/if}
-    </SectionListRow>
+    <ListRow
+      testid="schema-row"
+      data={{ 'data-schema': schema.name }}
+      icon={{ label: 'S', color: '#0090a8' }}
+      title={schema.name}
+      subtitle={`${schema.comment ?? ''}${schema.comment ? ' · ' : ''}${schema.tableCount} ${$t('unit_tables')} / ${schema.viewCount} ${$t('unit_views')}`}
+      {query}
+      badges={[{
+        testid: 'manifest-state',
+        label: hasManifest(schema.name) ? $t('mf_present') : $t('mf_not_created'),
+        tone: hasManifest(schema.name) ? 'success' : 'muted',
+        data: { 'data-state': hasManifest(schema.name) ? 'present' : 'absent' }
+      }]}
+      selected={selection.isSelected(schema.name)}
+      onToggle={() => selection.toggle(schema.name)}
+      action={onOpenManifest
+        ? { testid: 'open-manifest', label: $t('open'), onClick: () => onOpenManifest?.(schema.name) }
+        : undefined}
+    />
   {/each}
   {#if filtered.length === 0}
     <div class="px-4 py-6 text-sm text-[color:var(--rvc-muted)]">{$t('search_no_match')}</div>

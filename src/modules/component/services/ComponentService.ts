@@ -10,7 +10,7 @@ export class ComponentService {
     return this.componentRepository.listComponents(schema);
   }
 
-  async validateOpenApi(schema: string): Promise<Result<ValidationReport>> {
-    return this.componentRepository.validateOpenApi(schema);
+  async validateOpenApi(schema: string, profile: string): Promise<Result<ValidationReport>> {
+    return this.componentRepository.validateOpenApi(schema, profile);
   }
 }

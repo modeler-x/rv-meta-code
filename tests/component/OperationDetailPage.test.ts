@@ -56,12 +56,14 @@ describe('OperationDetailPage request body', () => {
         }
       }
     });
-    const { container } = render(OperationDetailPage, {
-      props: { entity, operation, fieldOrder: ['name', 'email', 'id'] }
-    });
-    const names = Array.from(container.querySelectorAll('.font-mono.font-semibold')).map((el) => el.textContent);
-    // fieldOrder に従って name → email → id の順に並ぶ
-    expect(names).toEqual(['name', 'email', 'id']);
+    // 期待する並びは渡した fieldOrder そのもの。テストに順序を書き写さない。
+    const fieldOrder = ['name', 'email', 'id'];
+    const { container } = render(OperationDetailPage, { props: { entity, operation, fieldOrder } });
+    // 見た目のクラスではなく testid で引く。装飾の変更で落ちないようにする。
+    const names = Array.from(
+      container.querySelectorAll('[data-testid="property-name"]')
+    ).map((el) => el.textContent);
+    expect(names).toEqual(fieldOrder);
   });
 
   it('shows the response body type (not only HTTP status) when content is present', () => {

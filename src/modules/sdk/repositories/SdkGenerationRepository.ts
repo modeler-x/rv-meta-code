@@ -10,11 +10,18 @@ import type {
   ValidationReport
 } from '@/modules/sdk/types/SdkGeneration';
 
-type OpenApiSpecRow = { schemaName: string; spec: OpenApiDocument };
+type OpenApiSpecRow = { schemaName: string; profile: string; spec: OpenApiDocument };
 
 export interface ISdkGenerationRepository {
-  getOpenApiDocument(schema: string): Promise<Result<OpenApiDocument>>;
-  validateOpenApi(schema: string): Promise<Result<ValidationReport>>;
+  /**
+   * profile は必須。
+   *
+   * profile は「同じ schema から見せる API 契約面」で、SDK は「その契約面から生成される
+   * 言語別成果物」。既定値を置くと、指定し忘れた生成が黙って postgrest（内部契約）を拾い、
+   * 内部専用の契約が公開 SDK として配られる。
+   */
+  getOpenApiDocument(schema: string, profile: string): Promise<Result<OpenApiDocument>>;
+  validateOpenApi(schema: string, profile: string): Promise<Result<ValidationReport>>;
   generateSdk(request: GenerateSdkRequest): Promise<Result<GenerateSdkResult>>;
   /** 利用可能な Generator（Adapter）と対応ターゲットを取得する。 */
   listGenerators(): Promise<Result<GeneratorDescriptor[]>>;
@@ -29,9 +36,12 @@ export interface ISdkGenerationRepository {
 }
 
 export class SdkGenerationRepository implements ISdkGenerationRepository {
-  async getOpenApiDocument(schema: string): Promise<Result<OpenApiDocument>> {
+  async getOpenApiDocument(schema: string, profile: string): Promise<Result<OpenApiDocument>> {
     try {
-      const specs = await invokeTauri<OpenApiSpecRow[]>('get_openapi_specs', { schemas: [schema] });
+      const specs = await invokeTauri<OpenApiSpecRow[]>('get_openapi_specs', {
+        schemas: [schema],
+        profile
+      });
       const doc = specs[0]?.spec;
       if (!doc) return fail<OpenApiDocument>('NOT_FOUND', `openapi document not found for "${schema}"`);
       return ok(doc);
@@ -40,9 +50,9 @@ export class SdkGenerationRepository implements ISdkGenerationRepository {
     }
   }
 
-  async validateOpenApi(schema: string): Promise<Result<ValidationReport>> {
+  async validateOpenApi(schema: string, profile: string): Promise<Result<ValidationReport>> {
     try {
-      return ok(await invokeTauri<ValidationReport>('validate_openapi', { schema }));
+      return ok(await invokeTauri<ValidationReport>('validate_openapi', { schema, profile }));
     } catch (error) {
       return fail<ValidationReport>('IPC_ERROR', toIpcErrorMessage(error));
     }

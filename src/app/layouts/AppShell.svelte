@@ -29,6 +29,7 @@
   import { SdkGenerationViewModel } from '@/modules/sdk/viewmodels/SdkGenerationViewModel.svelte';
   import { ManifestViewModel } from '@/modules/manifest/viewmodels/ManifestViewModel.svelte';
   import ManifestPage from '@/pages/ManifestPage.svelte';
+  import ManifestOperationPage from '@/pages/ManifestOperationPage.svelte';
   import { ComponentViewModel } from '@/modules/component/viewmodels/ComponentViewModel.svelte';
   import { GenerationViewModel } from '@/modules/generation/viewmodels/GenerationViewModel.svelte';
   import { RecentViewModel } from '@/modules/recent/viewmodels/RecentViewModel.svelte';
@@ -60,9 +61,14 @@
     if (result.success) currentConnection = result.data;
   }
 
+  /** マニフェスト一覧の行はスキーマ単位。読み込みはスキーマ一覧が揃ってから。 */
+  function schemaList(): { name: string; comment: string | null }[] {
+    return schemaViewModel.state.schemas.map((schema) => ({ name: schema.name, comment: schema.comment }));
+  }
+
   onMount(async () => {
     await Promise.all([loadCurrentConnection(), schemaViewModel.loadSchemas()]);
-    await manifestViewModel.loadCoverageFor(schemaViewModel.state.schemas.map((s) => s.name));
+    await manifestViewModel.loadOverviews(schemaList());
   });
 
   function navigate(name: AppRouteName): void {
@@ -70,16 +76,15 @@
     // 接続の切替を反映するため都度再取得。
     void loadCurrentConnection();
     if (name === 'schema') {
-      void schemaViewModel
-        .loadSchemas()
-        .then(() => manifestViewModel.loadCoverageFor(schemaViewModel.state.schemas.map((s) => s.name)));
+      void schemaViewModel.loadSchemas().then(() => manifestViewModel.loadOverviews(schemaList()));
     }
     if (name === 'manifest') {
-      const target = route.schemaName ?? schemaViewModel.state.schemas[0]?.name;
-      if (target) {
-        route = { ...route, schemaName: target };
-        void manifestViewModel.load(target);
-      }
+      void manifestViewModel.loadOverviews(schemaList());
+    }
+    if (name === 'manifestOperations') {
+      // 開いているスキーマを引き継ぐ。無ければ先頭。どのスキーマの話かが決まらないと編集できない。
+      const target = manifestViewModel.state.schemaName ?? schemaViewModel.state.schemas[0]?.name;
+      if (target) void manifestViewModel.load(target);
     }
     if (name === 'documents') void documentViewModel.loadDocuments();
     if (name === 'entities') void entityViewModel.loadEntities();
@@ -99,7 +104,7 @@
     if (document) {
       void entityViewModel.loadEntities(document.schemaName);
       void operationGroupViewModel.loadGroups(document.schemaName);
-      void documentViewModel.loadDetail(document.schemaName);
+      void documentViewModel.loadDetail(document.schemaName, document.profile);
       recentViewModel.record({ kind: 'document', title: document.title, subtitle: `${document.schemaName} / ${document.version}`, targetId: String(document.id), schemaName: document.schemaName });
     }
   }
@@ -107,13 +112,13 @@
     route = appProvider.routeService.createOperationGroupRoute(schemaName, groupKey, backRoute);
     void operationGroupViewModel.loadDetail(schemaName, groupKey);
   }
-  function openSdkGeneration(schemaName: string, backRoute: AppRoute): void {
-    route = appProvider.routeService.createSdkGenerationRoute(schemaName, backRoute);
+  function openSdkGeneration(schemaName: string, profile: string, backRoute: AppRoute): void {
+    route = appProvider.routeService.createSdkGenerationRoute(schemaName, profile, backRoute);
     sdkGenerationViewModel.reset();
   }
-  function openComponents(schemaName: string, backRoute: AppRoute): void {
-    route = appProvider.routeService.createComponentsRoute(schemaName, backRoute);
-    void componentViewModel.load(schemaName);
+  function openComponents(schemaName: string, profile: string, backRoute: AppRoute): void {
+    route = appProvider.routeService.createComponentsRoute(schemaName, profile, backRoute);
+    void componentViewModel.load(schemaName, profile);
   }
   function openFunctionOperation(schemaName: string, groupKey: string, operationRowId: string, backRoute: AppRoute): void {
     route = appProvider.routeService.createFunctionOperationRoute(schemaName, groupKey, operationRowId, backRoute);
@@ -148,13 +153,29 @@
   }
   function goBack(): void { route = route.backRoute ?? { name: 'welcome' }; }
 
+  /** スキーマ一覧からマニフェストへ。遷移するだけで、宣言は作らない。 */
+  function openManifest(schemaName: string): void {
+    route = { name: 'manifest', schemaName };
+    void manifestViewModel.loadOverviews(schemaList());
+  }
+
+  /** マニフェストからオペレーションへ。診断から飛んだ場合は関数を初期フィルターにする。 */
+  function openOperations(schemaName: string, functionKey?: string): void {
+    route = { name: 'manifestOperations', schemaName, functionKey, backRoute: { name: 'manifest' } };
+    void manifestViewModel.load(schemaName);
+  }
+
+  function openHelp(helpPage: string): void {
+    route = { name: 'help', helpPage, backRoute: route };
+  }
+
   const selectedEntity = $derived(entityViewModel.findEntity(route.entityId));
   const selectedDocument = $derived(documentViewModel.findDocument(route.documentId));
   const selectedOperation = $derived(entityViewModel.detail?.operations.find((operation) => String(operation.id) === route.operationRowId));
   const selectedGroup = $derived(operationGroupViewModel.findGroup(route.groupKey, route.schemaName));
   const selectedFunctionOperation = $derived(operationGroupViewModel.findOperation(route.operationRowId));
   const connectionLabel = $derived(currentConnection ? `${currentConnection.database} / ${currentConnection.host}` : $t('no_connection'));
-  const titleMap = $derived({ welcome: $t('title_welcome'), schema: $t('title_schemas'), manifest: $t('title_manifest'), documents: $t('title_documents'), documentDetail: selectedDocument?.title ?? $t('title_documents'), entities: $t('title_entities'), entityDetail: selectedEntity?.tableName ?? '', functions: $t('title_functions'), help: $t('title_help'), operationDetail: selectedOperation?.path ?? $t('sec_operations'), operationGroupDetail: selectedGroup?.displayName ?? $t('title_operation_group'), functionOperationDetail: selectedFunctionOperation?.path ?? $t('sec_operations'), sdkGeneration: $t('title_sdk'), components: $t('title_components'), recent: $t('title_recent'), profile: $t('title_profile'), connections: $t('title_connections'), servers: $t('title_servers') });
+  const titleMap = $derived({ welcome: $t('title_welcome'), schema: $t('title_schemas'), manifest: $t('title_manifest'), manifestOperations: $t('title_operations'), documents: $t('title_documents'), documentDetail: selectedDocument?.title ?? $t('title_documents'), entities: $t('title_entities'), entityDetail: selectedEntity?.tableName ?? '', functions: $t('title_functions'), help: $t('title_help'), operationDetail: selectedOperation?.path ?? $t('sec_operations'), operationGroupDetail: selectedGroup?.displayName ?? $t('title_operation_group'), functionOperationDetail: selectedFunctionOperation?.path ?? $t('sec_operations'), sdkGeneration: $t('title_sdk'), components: $t('title_components'), recent: $t('title_recent'), profile: $t('title_profile'), connections: $t('title_connections'), servers: $t('title_servers') });
   const title = $derived(titleMap[route.name]);
 </script>
 
@@ -167,15 +188,15 @@
         {#if route.name === 'welcome'}
           <WelcomePage onNavigate={navigate} />
         {:else if route.name === 'schema'}
-          <SchemaPage viewModel={schemaViewModel} generationViewModel={generationViewModel} manifestViewModel={manifestViewModel} onOpenManifest={(name) => { route = { name: 'manifest', schemaName: name }; void manifestViewModel.load(name); }} />
+          <SchemaPage viewModel={schemaViewModel} generationViewModel={generationViewModel} manifestViewModel={manifestViewModel} onOpenManifest={openManifest} />
         {:else if route.name === 'documents'}
           <DocumentListPage viewModel={documentViewModel} onOpenDocument={openDocument} />
         {:else if route.name === 'documentDetail' && selectedDocument}
-          <DocumentDetailPage document={selectedDocument} documentViewModel={documentViewModel} entityViewModel={entityViewModel} operationGroupViewModel={operationGroupViewModel} onOpenEntity={(entityId) => openEntity(entityId, route)} onOpenGroup={(groupKey) => openOperationGroup(selectedDocument.schemaName, groupKey, route)} onGenerateSdk={() => openSdkGeneration(selectedDocument.schemaName, route)} onOpenComponents={() => openComponents(selectedDocument.schemaName, route)} />
+          <DocumentDetailPage document={selectedDocument} documentViewModel={documentViewModel} entityViewModel={entityViewModel} operationGroupViewModel={operationGroupViewModel} onOpenEntity={(entityId) => openEntity(entityId, route)} onOpenGroup={(groupKey) => openOperationGroup(selectedDocument.schemaName, groupKey, route)} onGenerateSdk={() => openSdkGeneration(selectedDocument.schemaName, selectedDocument.profile, route)} onOpenComponents={() => openComponents(selectedDocument.schemaName, selectedDocument.profile, route)} />
         {:else if route.name === 'sdkGeneration'}
-          <SdkGenerationPage viewModel={sdkGenerationViewModel} schema={route.schemaName ?? ''} />
+          <SdkGenerationPage viewModel={sdkGenerationViewModel} schema={route.schemaName ?? ''} profile={route.profile ?? ''} />
         {:else if route.name === 'components'}
-          <ComponentsPage viewModel={componentViewModel} schema={route.schemaName ?? ''} />
+          <ComponentsPage viewModel={componentViewModel} schema={route.schemaName ?? ''} profile={route.profile ?? ''} />
         {:else if route.name === 'entities'}
           <EntityListPage viewModel={entityViewModel} onOpenEntity={(entityId) => openEntity(entityId)} />
         {:else if route.name === 'entityDetail' && selectedEntity}
@@ -185,9 +206,18 @@
         {:else if route.name === 'functions'}
           <FunctionListPage viewModel={operationGroupViewModel} onOpenGroup={(schemaName, groupKey) => openOperationGroup(schemaName, groupKey, { name: 'functions' })} />
         {:else if route.name === 'manifest'}
-          <ManifestPage viewModel={manifestViewModel} schemaName={route.schemaName ?? ''} />
+          <ManifestPage viewModel={manifestViewModel} onOpenOperations={openOperations} onOpenHelp={openHelp} />
+        {:else if route.name === 'manifestOperations'}
+          <ManifestOperationPage
+            viewModel={manifestViewModel}
+            schemas={schemaList()}
+            initialSchema={route.schemaName ?? null}
+            initialFunctionKey={route.functionKey ?? null}
+            initialProfile={route.functionKey ? 'bff' : 'postgrest'}
+            onOpenHelp={openHelp}
+          />
         {:else if route.name === 'help'}
-          <HelpPage />
+          <HelpPage initialPage={route.helpPage ?? null} />
         {:else if route.name === 'operationGroupDetail' && selectedGroup}
           <OperationGroupDetailPage group={selectedGroup} operations={operationGroupViewModel.detail?.operations ?? []} isLoading={operationGroupViewModel.isDetailLoading} onOpenOperation={(operationRowId) => openFunctionOperation(route.schemaName ?? '', route.groupKey ?? '', operationRowId, route)} />
         {:else if route.name === 'functionOperationDetail' && selectedFunctionOperation}

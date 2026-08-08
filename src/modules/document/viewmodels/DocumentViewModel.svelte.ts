@@ -19,20 +19,20 @@ export class DocumentViewModel {
 
   constructor(private readonly documentService: DocumentService) {}
 
-  async loadDetail(schema: string): Promise<void> {
+  async loadDetail(schema: string, profile: string): Promise<void> {
     this.isDetailLoading = true;
     this.detail = null;
     this.validationReport = null;
-    const result = await this.documentService.loadDocumentDetail(schema);
+    const result = await this.documentService.loadDocumentDetail(schema, profile);
     if (result.success) {
       this.detail = result.data;
     }
     this.isDetailLoading = false;
   }
 
-  async validate(schema: string): Promise<void> {
+  async validate(schema: string, profile: string): Promise<void> {
     this.isValidating = true;
-    const result = await this.documentService.validateOpenApi(schema);
+    const result = await this.documentService.validateOpenApi(schema, profile);
     if (result.success) {
       this.validationReport = result.data;
     }
@@ -50,10 +50,10 @@ export class DocumentViewModel {
   }
 
   /** 選択スキーマの OpenAPI 仕様を取得しプレビューを開く。 */
-  async exportSpecs(schemas: string[]): Promise<void> {
+  async exportSpecs(schemas: string[], profile: string): Promise<void> {
     if (schemas.length === 0) return;
     this.isExporting = true;
-    const result = await this.documentService.loadSpecs(schemas);
+    const result = await this.documentService.loadSpecs(schemas, profile);
     if (result.success) {
       this.previewSpecs = result.data;
     }

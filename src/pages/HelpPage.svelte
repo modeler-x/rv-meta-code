@@ -1,151 +1,136 @@
 <script lang="ts">
-  import IconTile from '@/shared/components/IconTile.svelte';
-  import SectionList from '@/shared/components/SectionList.svelte';
-  import SectionListRow from '@/shared/components/SectionListRow.svelte';
-  import { language } from '@/shared/i18n/i18n.svelte';
-  import { translate as t } from '@/shared/i18n/i18n.svelte';
+  import { untrack } from 'svelte';
+  import SearchBox from '@/shared/components/SearchBox.svelte';
+  import { HelpService } from '@/modules/help/services/HelpService';
+  import { language, translate as t } from '@/shared/i18n/i18n.svelte';
 
-  type Field = { name: string; required: boolean; desc: string };
-  type Section = { key: string; title: string; target: string; intro: string; fields: Field[]; example: string };
+  // ヘルプは md を索引とページに分けて出す。全文検索を持たせるのは、
+  // 診断コードや manifest のキー名から引くことが多く、目次だけでは辿れないため。
+  let { initialPage = null }: { initialPage?: string | null } = $props();
 
-  // rv_meta 独自の DML 記述仕様。暗黙値になりがちなので object 種別ごとに明示する。
-  const content: Record<'ja' | 'en', Section[]> = {
-    ja: [
-      {
-        key: 'document',
-        title: 'スキーマ / ドキュメント',
-        target: 'COMMENT ON SCHEMA … IS \'@openapi-document { … }\'',
-        intro: 'ドキュメントメタの単一情報源（SoT）。スキーマ COMMENT に @openapi-document で宣言する。未指定の項目はカタログ/既定から推論する。',
-        fields: [
-          { name: 'title', required: false, desc: '未指定はスキーマ名から推論（例 "Rv Auth API"）。' },
-          { name: 'version', required: false, desc: 'API バージョン。未指定は既定値。' },
-          { name: 'description', required: false, desc: 'ドキュメント説明。' },
-          { name: 'generationMode', required: false, desc: 'entity_and_function（既定）| function_only。function_only は Entity CRUD を出力しない。' },
-          { name: 'basePath', required: false, desc: '公開 URL 第1セグメント兼 SDK Service 名の基底。未指定はスキーマ名。単一セグメント（^[a-z][a-z0-9_-]*$）。' }
-        ],
-        example:
-          "COMMENT ON SCHEMA rv_auth IS\n'@openapi-document {\"title\":\"Auth API\",\"version\":\"1.0.0\",\"basePath\":\"auth\",\"generationMode\":\"function_only\"}';"
-      },
-      {
-        key: 'function',
-        title: 'ファンクション（Operation）',
-        target: 'COMMENT ON FUNCTION … IS \'… @openapi { … }\'',
-        intro: '関数を 1 つの API Operation として公開する。@openapi の無い関数は非公開。path は basePath への相対、operationId は method 名（prefix なし）で宣言し、公開 path /{basePath}{path} と operationId {service}{Method} は compile が合成する。',
-        fields: [
-          { name: 'operationGroup', required: false, desc: 'SDK Service 名。未指定は basePath。指定でサブグループ。' },
-          { name: 'operationId', required: true, desc: 'method 名（prefix なし。例 "login"）。合成後は service+Method（例 authLogin）。' },
-          { name: 'method', required: true, desc: 'GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS/TRACE。' },
-          { name: 'path', required: true, desc: 'basePath への相対（先頭 "/"）。/{basePath} の再宣言は不可（二重化防止）。' },
-          { name: 'tags', required: true, desc: '非空配列。分類用（SDK Service とは別）。' },
-          { name: 'security', required: true, desc: 'Security Requirement 配列。公開 Operation は [] を明示。' },
-          { name: 'parameters', required: false, desc: 'OpenAPI Parameter 配列。path の {param} と in:path が一致すること。' },
-          { name: 'requestBody', required: false, desc: 'OpenAPI Request Body Object。' },
-          { name: 'responses', required: false, desc: '未指定は OUT/TABLE 列から推論。推論不可なら明示必須。' }
-        ],
-        example:
-          "COMMENT ON FUNCTION rv_auth.login(p_email text, p_password text) IS\n'サインイン。\n@openapi {\"operationId\":\"login\",\"method\":\"POST\",\"path\":\"/login\",\"tags\":[\"Auth\"],\"security\":[]}';\n-- 公開: POST /auth/login / operationId authLogin / service auth"
-      },
-      {
-        key: 'entity',
-        title: 'エンティティ（テーブル / ビュー）',
-        target: '（DML 宣言なし・カタログから自動生成）',
-        intro: 'テーブル/ビューから自動生成され、専用の @openapi 宣言は不要。命名とパスは basePath とカタログから決まる。読取専用はポリシーで制御する。',
-        fields: [
-          { name: 'resource', required: false, desc: 'lower(table 名, _→-)。パス末尾セグメント。' },
-          { name: 'path', required: false, desc: '/{basePath}/{table}。' },
-          { name: 'operationId', required: false, desc: '{basePath}_{resource}_{op}。' },
-          { name: 'CRUD', required: false, desc: 'list/get/post/put/delete/delete_many。読取専用は list/get のみ。' },
-          { name: 'read-only', required: false, desc: 'is_view（カタログ）または is_read_only（UI トグル/ポリシー）。' },
-          { name: 'component', required: false, desc: 'PascalCase(schema-resource)。models のスキーマ名。' }
-        ],
-        example:
-          "-- 宣言不要。read-only ポリシーはエンティティ詳細のトグル、または:\nUPDATE rv_meta.openapi_entities SET is_read_only = true\n WHERE table_schema = 'rv_auth' AND table_name = 'session';"
-      }
-    ],
-    en: [
-      {
-        key: 'document',
-        title: 'Schema / Document',
-        target: "COMMENT ON SCHEMA … IS '@openapi-document { … }'",
-        intro: 'Single source of truth for document metadata, declared with @openapi-document on the schema COMMENT. Unspecified fields are inferred from the catalog/defaults.',
-        fields: [
-          { name: 'title', required: false, desc: 'Inferred from the schema name when omitted.' },
-          { name: 'version', required: false, desc: 'API version. Defaulted when omitted.' },
-          { name: 'description', required: false, desc: 'Document description.' },
-          { name: 'generationMode', required: false, desc: 'entity_and_function (default) | function_only. function_only omits Entity CRUD.' },
-          { name: 'basePath', required: false, desc: 'First URL segment and SDK service-name base. Falls back to the schema name. Single segment (^[a-z][a-z0-9_-]*$).' }
-        ],
-        example:
-          "COMMENT ON SCHEMA rv_auth IS\n'@openapi-document {\"title\":\"Auth API\",\"version\":\"1.0.0\",\"basePath\":\"auth\",\"generationMode\":\"function_only\"}';"
-      },
-      {
-        key: 'function',
-        title: 'Function (Operation)',
-        target: "COMMENT ON FUNCTION … IS '… @openapi { … }'",
-        intro: 'Publishes a function as one API operation. Functions without @openapi are private. The path is relative to basePath and operationId is the bare method name; compile composes the public path /{basePath}{path} and operationId {service}{Method}.',
-        fields: [
-          { name: 'operationGroup', required: false, desc: 'SDK service name. Defaults to basePath; set it to create a sub-group.' },
-          { name: 'operationId', required: true, desc: 'Bare method name (e.g. "login"); composed to service+Method (e.g. authLogin).' },
-          { name: 'method', required: true, desc: 'GET/POST/PUT/PATCH/DELETE/HEAD/OPTIONS/TRACE.' },
-          { name: 'path', required: true, desc: 'Relative to basePath (leading "/"). Restating /{basePath} is rejected.' },
-          { name: 'tags', required: true, desc: 'Non-empty array. Classification, independent of the SDK service.' },
-          { name: 'security', required: true, desc: 'Security Requirement array. Use [] for public operations.' },
-          { name: 'parameters', required: false, desc: 'OpenAPI Parameter array; {param} in path must match in:path parameters.' },
-          { name: 'requestBody', required: false, desc: 'OpenAPI Request Body Object.' },
-          { name: 'responses', required: false, desc: 'Inferred from OUT/TABLE columns when omitted; required if not inferable.' }
-        ],
-        example:
-          "COMMENT ON FUNCTION rv_auth.login(p_email text, p_password text) IS\n'Sign in.\n@openapi {\"operationId\":\"login\",\"method\":\"POST\",\"path\":\"/login\",\"tags\":[\"Auth\"],\"security\":[]}';\n-- Public: POST /auth/login / operationId authLogin / service auth"
-      },
-      {
-        key: 'entity',
-        title: 'Entity (Table / View)',
-        target: '(No DML declaration — generated from the catalog)',
-        intro: 'Generated automatically from tables/views; no @openapi declaration is needed. Naming and paths come from basePath and the catalog. Read-only is a policy.',
-        fields: [
-          { name: 'resource', required: false, desc: 'lower(table name, _→-). Last path segment.' },
-          { name: 'path', required: false, desc: '/{basePath}/{table}.' },
-          { name: 'operationId', required: false, desc: '{basePath}_{resource}_{op}.' },
-          { name: 'CRUD', required: false, desc: 'list/get/post/put/delete/delete_many. Read-only emits only list/get.' },
-          { name: 'read-only', required: false, desc: 'is_view (catalog) or is_read_only (UI toggle / policy).' },
-          { name: 'component', required: false, desc: 'PascalCase(schema-resource). The model schema name.' }
-        ],
-        example:
-          "-- No declaration. Read-only policy via the entity-detail toggle, or:\nUPDATE rv_meta.openapi_entities SET is_read_only = true\n WHERE table_schema = 'rv_auth' AND table_name = 'session';"
-      }
-    ]
-  };
+  const service = new HelpService();
+  const pages = $derived(service.listPages($language));
+  let query = $state('');
+  // 初期表示だけ受け取る。以降はこの画面の操作で変わる。
+  let currentId = $state<string | null>(untrack(() => initialPage));
 
-  const sections = $derived(content[$language] ?? content.ja);
+  const current = $derived(pages.find((page) => page.id === currentId) ?? pages[0]);
+  const hits = $derived(service.search(pages, query));
+
+  /** 本文中の [text](xx.md) はページ移動にする。外部リンクはそのまま。 */
+  function onBodyClick(event: MouseEvent): void {
+    const target = (event.target as HTMLElement | null)?.closest('[data-help-link]');
+    if (!target) return;
+    event.preventDefault();
+    currentId = target.getAttribute('data-help-link');
+  }
 </script>
 
-<div class="mb-6 flex items-center gap-3">
-  <IconTile label="?" color="#6b7280" />
-  <div>
-    <h2 class="text-xl font-bold">{$t('title_help')}</h2>
-    <p class="text-xs text-[color:var(--rvc-muted)]">{$t('help_intro')}</p>
+<SearchBox bind:value={query} placeholder={$t('help_search_placeholder')} />
+
+<div class="flex min-h-0 gap-5">
+  <nav class="w-56 shrink-0">
+    <p class="px-1 pb-2 text-[11px] font-bold uppercase tracking-wide text-[color:var(--rvc-muted)]">{$t('help_index')}</p>
+    <ul class="flex flex-col gap-0.5">
+      {#each pages as page}
+        <li>
+          <button
+            data-testid="help-index"
+            data-page={page.id}
+            data-current={page.id === current?.id}
+            class={`w-full truncate rounded-md px-2 py-1.5 text-left text-xs ${page.id === current?.id ? 'bg-[color:var(--rvc-accent)] text-white' : 'hover:bg-[color:var(--rvc-hover)]'}`}
+            onclick={() => { currentId = page.id; query = ''; }}
+          >{page.title}</button>
+        </li>
+      {/each}
+    </ul>
+  </nav>
+
+  <div class="min-w-0 flex-1">
+    {#if query.trim().length > 0}
+      <p class="mb-2 text-xs text-[color:var(--rvc-muted)]">{$t('help_hits').replace('{n}', String(hits.length))}</p>
+      <div class="flex flex-col gap-2">
+        {#each hits as hit}
+          <button
+            data-testid="help-hit"
+            data-page={hit.page.id}
+            data-count={hit.count}
+            class="rounded-lg border border-[color:var(--rvc-border)] p-3 text-left hover:bg-[color:var(--rvc-hover)]"
+            onclick={() => { currentId = hit.page.id; query = ''; }}
+          >
+            <span class="block text-sm font-semibold">{hit.page.title}</span>
+            {#each hit.snippets as snippet}
+              <span class="mt-1 block truncate text-xs text-[color:var(--rvc-muted)]">{snippet}</span>
+            {/each}
+          </button>
+        {/each}
+        {#if hits.length === 0}
+          <p class="px-1 py-6 text-sm text-[color:var(--rvc-muted)]">{$t('search_no_match')}</p>
+        {/if}
+      </div>
+    {:else if current}
+      <!-- 本文中のリンクを拾うためのハンドラ。個々の <a> ではなく本文に置くのは、
+           md から生成した要素にイベントを付けられないため。キーボードは <a> 自身が受ける。 -->
+      <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions, a11y_no_noninteractive_element_interactions -->
+      <article
+        data-testid="help-body"
+        data-page={current.id}
+        class="rvc-help rvc-value"
+        onclick={onBodyClick}
+      >
+        {@html current.html}
+      </article>
+    {/if}
   </div>
 </div>
 
-{#each sections as section}
-  <div class="mt-4"></div>
-  <SectionList title={section.title}>
-    <SectionListRow>
-      <span class="min-w-0 flex-1">
-        <span class="block font-mono text-[11px] text-[color:var(--rvc-accent)]">{section.target}</span>
-        <span class="mt-1 block text-xs text-[color:var(--rvc-muted)]">{section.intro}</span>
-      </span>
-    </SectionListRow>
-    {#each section.fields as field}
-      <SectionListRow>
-        <span class="w-40 shrink-0 font-mono text-xs">
-          {field.name}{#if field.required}<span class="text-[color:#e5484d]"> *</span>{/if}
-        </span>
-        <span class="flex-1 text-xs text-[color:var(--rvc-muted)]">{field.desc}</span>
-      </SectionListRow>
-    {/each}
-    <SectionListRow>
-      <pre class="w-full select-text overflow-auto whitespace-pre-wrap break-words rounded bg-[color:var(--rvc-search)] p-2 font-mono text-[11px]">{section.example}</pre>
-    </SectionListRow>
-  </SectionList>
-{/each}
+<style>
+  .rvc-help :global(.rvc-help-h1) { font-size: 20px; font-weight: 650; margin: 0 0 12px; }
+  .rvc-help :global(.rvc-help-h2) { font-size: 15px; font-weight: 650; margin: 22px 0 8px; }
+  .rvc-help :global(.rvc-help-h3) { font-size: 13px; font-weight: 650; margin: 16px 0 6px; }
+  .rvc-help :global(.rvc-help-p) { font-size: 13px; line-height: 1.75; margin: 0 0 10px; }
+  .rvc-help :global(.rvc-help-ul),
+  .rvc-help :global(.rvc-help-ol) { font-size: 13px; line-height: 1.75; margin: 0 0 10px; padding-left: 20px; }
+  .rvc-help :global(.rvc-help-ul) { list-style: disc; }
+  .rvc-help :global(.rvc-help-ol) { list-style: decimal; }
+  .rvc-help :global(.rvc-help-code) {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.9em;
+    background: var(--rvc-search);
+    border-radius: 3px;
+    padding: 0 3px;
+  }
+  .rvc-help :global(.rvc-help-pre) {
+    background: var(--rvc-search);
+    border: 1px solid var(--rvc-border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    overflow-x: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px;
+    line-height: 1.6;
+    margin: 0 0 12px;
+  }
+  /* 表は横に溢れるので、本文ではなく表の中でスクロールさせる。 */
+  .rvc-help :global(.rvc-help-tablewrap) {
+    overflow-x: auto;
+    border: 1px solid var(--rvc-border);
+    border-radius: 8px;
+    margin: 0 0 12px;
+  }
+  .rvc-help :global(.rvc-help-table) { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .rvc-help :global(.rvc-help-table th) {
+    text-align: left;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--rvc-muted);
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--rvc-border);
+    white-space: nowrap;
+  }
+  .rvc-help :global(.rvc-help-table td) { padding: 7px 10px; border-bottom: 1px solid var(--rvc-border); vertical-align: top; }
+  .rvc-help :global(.rvc-help-table tr:last-child td) { border-bottom: 0; }
+  .rvc-help :global(a) { color: var(--rvc-accent); font-weight: 600; text-decoration: none; }
+  .rvc-help :global(a:hover) { text-decoration: underline; }
+</style>

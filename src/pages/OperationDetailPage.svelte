@@ -189,7 +189,7 @@
   <SectionList title={$t('op_params')}>
     {#each pathQueryParams as parameter}
       <SectionListRow>
-        <span class="font-mono font-semibold">{parameter.name}</span>
+        <span data-testid="parameter-name" class="font-mono font-semibold">{parameter.name}</span>
         <span class="rounded bg-[color:var(--rvc-search)] px-2 py-1 text-xs uppercase">{parameter.in}</span>
         <span class="font-mono text-xs text-[color:var(--rvc-muted)]">{paramType(parameter.schema)}</span>
         <span class="flex-1"></span>
@@ -203,7 +203,7 @@
   <SectionList title={$t('op_req_headers')}>
     {#each requestHeaders as header}
       <SectionListRow>
-        <span class="font-mono font-semibold">{header.name}</span>
+        <span data-testid="header-name" class="font-mono font-semibold">{header.name}</span>
         <span class="font-mono text-xs text-[color:var(--rvc-muted)]">{paramType(header.schema)}</span>
         {#if header.description}<span class="text-xs text-[color:var(--rvc-muted)]">{header.description}</span>{/if}
         <span class="flex-1"></span>
@@ -217,7 +217,7 @@
   <SectionList title={$t('op_body')} detail={$t('mime_json')}>
     {#each bodyProperties as property}
       <SectionListRow>
-        <span class="font-mono font-semibold">{property.name}</span>
+        <span data-testid="property-name" class="font-mono font-semibold">{property.name}</span>
         <span class="font-mono text-xs text-[color:var(--rvc-muted)]">{property.type}</span>
         <span class="flex-1"></span>
         <span class="text-xs text-[color:var(--rvc-muted)]">{property.required ? $t('req_required') : $t('req_optional')}</span>

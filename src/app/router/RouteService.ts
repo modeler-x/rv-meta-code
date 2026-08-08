@@ -30,11 +30,11 @@ export class RouteService {
     return { name: 'functionOperationDetail', schemaName, groupKey, operationRowId, backRoute };
   }
 
-  createSdkGenerationRoute(schemaName: string, backRoute: AppRoute): AppRoute {
-    return { name: 'sdkGeneration', schemaName, backRoute };
+  createSdkGenerationRoute(schemaName: string, profile: string, backRoute: AppRoute): AppRoute {
+    return { name: 'sdkGeneration', schemaName, profile, backRoute };
   }
 
-  createComponentsRoute(schemaName: string, backRoute: AppRoute): AppRoute {
-    return { name: 'components', schemaName, backRoute };
+  createComponentsRoute(schemaName: string, profile: string, backRoute: AppRoute): AppRoute {
+    return { name: 'components', schemaName, profile, backRoute };
   }
 }

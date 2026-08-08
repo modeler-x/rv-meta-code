@@ -29,7 +29,7 @@ class FakeComponentRepo implements IComponentRepository {
 describe('ComponentViewModel', () => {
   it('loads components and keeps only component-related validation issues', async () => {
     const vm = new ComponentViewModel(new ComponentService(new FakeComponentRepo()));
-    await vm.load('rv_auth');
+    await vm.load('rv_auth', 'postgrest');
     expect(vm.components).toHaveLength(3);
     // securitySchemes を section で引ける。
     expect(vm.bySection('securitySchemes').map((c) => c.name)).toEqual(['bearerAuth', 'apiKeyAuth']);

@@ -10,6 +10,9 @@
   --rvc-hover: rgba(0, 0, 0, 0.045);
   --rvc-highlight: rgba(255, 213, 0, 0.5);
   --rvc-selection: rgba(0, 144, 168, 0.28);
+  --rvc-success: #1a9e4b;
+  --rvc-warning: #b8791a;
+  --rvc-danger: #e5484d;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -24,5 +27,8 @@
     --rvc-hover: rgba(255, 255, 255, 0.06);
     --rvc-highlight: rgba(255, 213, 0, 0.32);
     --rvc-selection: rgba(10, 180, 210, 0.36);
+    --rvc-success: #43c97a;
+    --rvc-warning: #e0a854;
+    --rvc-danger: #ff6f61;
   }
 }

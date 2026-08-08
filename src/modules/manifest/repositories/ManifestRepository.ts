@@ -3,20 +3,28 @@ import { invokeTauri } from '@/shared/ipc/invokeTauri';
 import type {
   ManifestCoverage,
   ManifestDiagnostic,
+  ManifestDocument,
+  ManifestFunction,
   StoredManifest
 } from '@/modules/manifest/types/Manifest';
 
 export interface IManifestRepository {
   coverage(schemaName: string): Promise<Result<ManifestCoverage[]>>;
+  functions(schemaName: string): Promise<Result<ManifestFunction[]>>;
   diagnose(schemaName: string): Promise<Result<ManifestDiagnostic[]>>;
   get(schemaName: string): Promise<Result<StoredManifest>>;
-  draft(schemaName: string): Promise<Result<unknown>>;
-  load(schemaName: string, manifest: unknown): Promise<Result<unknown>>;
+  draft(schemaName: string): Promise<Result<ManifestDocument>>;
+  load(schemaName: string, manifest: ManifestDocument): Promise<Result<unknown>>;
 }
 
 export class ManifestRepository implements IManifestRepository {
   async coverage(schemaName: string): Promise<Result<ManifestCoverage[]>> {
     return call<ManifestCoverage[]>('manifest_coverage', { schemaName });
+  }
+
+  /** 引数と関数 COMMENT。bind の行を人に書かせないための入力元。 */
+  async functions(schemaName: string): Promise<Result<ManifestFunction[]>> {
+    return call<ManifestFunction[]>('manifest_functions', { schemaName });
   }
 
   async diagnose(schemaName: string): Promise<Result<ManifestDiagnostic[]>> {
@@ -28,12 +36,12 @@ export class ManifestRepository implements IManifestRepository {
   }
 
   /** カタログから骨子を起こしてマージした結果を返す。保存はしない。 */
-  async draft(schemaName: string): Promise<Result<unknown>> {
-    return call<unknown>('draft_manifest', { schemaName });
+  async draft(schemaName: string): Promise<Result<ManifestDocument>> {
+    return call<ManifestDocument>('draft_manifest', { schemaName });
   }
 
   /** 検証を通ったときだけ保存される。error があれば書かずに失敗する。 */
-  async load(schemaName: string, manifest: unknown): Promise<Result<unknown>> {
+  async load(schemaName: string, manifest: ManifestDocument): Promise<Result<unknown>> {
     return call<unknown>('load_manifest', { schemaName, manifest });
   }
 }

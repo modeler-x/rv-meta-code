@@ -1,7 +1,9 @@
 use tauri::AppHandle;
 
 use crate::commands::metadata::build_service;
-use crate::dto::metadata_dto::{ManifestCoverageDto, ManifestDiagnosticDto, ManifestDto};
+use crate::dto::metadata_dto::{
+    ManifestCoverageDto, ManifestDiagnosticDto, ManifestDto, ManifestFunctionDto,
+};
 use crate::errors::app_error::AppError;
 
 fn require_schema(schema_name: &str) -> Result<&str, AppError> {
@@ -38,4 +40,14 @@ pub async fn diagnose_manifest(
 pub async fn get_manifest(app: AppHandle, schema_name: String) -> Result<ManifestDto, AppError> {
     let schema = require_schema(&schema_name)?;
     build_service(&app)?.get_manifest(schema).await
+}
+
+/// 宣言を編集するための入力元。引数を返すので、UI が bind の行を人に書かせずに組み立てられる。
+#[tauri::command]
+pub async fn manifest_functions(
+    app: AppHandle,
+    schema_name: String,
+) -> Result<Vec<ManifestFunctionDto>, AppError> {
+    let schema = require_schema(&schema_name)?;
+    build_service(&app)?.manifest_functions(schema).await
 }

@@ -1,6 +1,7 @@
 pub mod components;
 pub mod current_connection;
 pub mod document_detail;
+pub mod openapi_profiles;
 pub mod documents;
 pub mod entities;
 pub mod entity_detail;

@@ -1,7 +1,8 @@
 use crate::dto::compile_schema_response::CompileSchemaResponse;
 use crate::dto::metadata_dto::{
     ComponentSummaryDto, DocumentDetailDto, DocumentDto, EntityDetailDto, EntitySummaryDto,
-    ManifestCoverageDto, ManifestDiagnosticDto, ManifestDto, OpenApiSpecDto, OperationDto,
+    ManifestCoverageDto, ManifestDiagnosticDto, ManifestDto, ManifestFunctionDto,
+    OpenApiProfileDto, OpenApiSpecDto, OperationDto,
     RouteConflictDto, SchemaSummaryDto,
 };
 use serde_json::Value;
@@ -27,8 +28,16 @@ impl MetadataService {
         self.repository.list_documents().await
     }
 
-    pub async fn document_detail(&self, schema: &str) -> Result<DocumentDetailDto, AppError> {
-        self.repository.document_detail(schema).await
+    pub async fn document_detail(
+        &self,
+        schema: &str,
+        profile: &str,
+    ) -> Result<DocumentDetailDto, AppError> {
+        self.repository.document_detail(schema, profile).await
+    }
+
+    pub async fn openapi_profiles(&self, schema: &str) -> Result<Vec<OpenApiProfileDto>, AppError> {
+        self.repository.openapi_profiles(schema).await
     }
 
     pub async fn list_components(&self, schema: &str) -> Result<Vec<ComponentSummaryDto>, AppError> {
@@ -53,8 +62,9 @@ impl MetadataService {
     pub async fn get_openapi_specs(
         &self,
         schemas: &[String],
+        profile: &str,
     ) -> Result<Vec<OpenApiSpecDto>, AppError> {
-        self.repository.get_openapi_specs(schemas).await
+        self.repository.get_openapi_specs(schemas, profile).await
     }
 
     pub async fn set_read_only(
@@ -82,6 +92,13 @@ impl MetadataService {
         schema: &str,
     ) -> Result<Vec<ManifestCoverageDto>, AppError> {
         self.repository.manifest_coverage(schema).await
+    }
+
+    pub async fn manifest_functions(
+        &self,
+        schema: &str,
+    ) -> Result<Vec<ManifestFunctionDto>, AppError> {
+        self.repository.manifest_functions(schema).await
     }
 
     pub async fn diagnose_manifest(

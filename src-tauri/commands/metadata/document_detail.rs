@@ -9,9 +9,14 @@ use crate::errors::app_error::AppError;
 pub async fn get_document_detail(
     app: AppHandle,
     schema: String,
+    profile: String,
 ) -> Result<DocumentDetailDto, AppError> {
     if schema.trim().is_empty() {
         return Err(AppError::validation("schema is required"));
     }
-    build_service(&app)?.document_detail(&schema).await
+    // profile は必須。既定値を置くと、指定し忘れが黙って内部契約を拾う。
+    if profile.trim().is_empty() {
+        return Err(AppError::validation("profile is required"));
+    }
+    build_service(&app)?.document_detail(&schema, &profile).await
 }

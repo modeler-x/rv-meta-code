@@ -6,7 +6,7 @@ import type { ValidationReport } from '@/modules/sdk/types/SdkGeneration';
 
 export interface IComponentRepository {
   listComponents(schema: string): Promise<Result<ComponentSummary[]>>;
-  validateOpenApi(schema: string): Promise<Result<ValidationReport>>;
+  validateOpenApi(schema: string, profile: string): Promise<Result<ValidationReport>>;
 }
 
 export class ComponentRepository implements IComponentRepository {
@@ -18,9 +18,9 @@ export class ComponentRepository implements IComponentRepository {
     }
   }
 
-  async validateOpenApi(schema: string): Promise<Result<ValidationReport>> {
+  async validateOpenApi(schema: string, profile: string): Promise<Result<ValidationReport>> {
     try {
-      return ok(await invokeTauri<ValidationReport>('validate_openapi', { schema }));
+      return ok(await invokeTauri<ValidationReport>('validate_openapi', { schema, profile }));
     } catch (error) {
       return fail<ValidationReport>('IPC_ERROR', toIpcErrorMessage(error));
     }

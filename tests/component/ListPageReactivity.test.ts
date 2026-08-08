@@ -20,7 +20,7 @@ import type { EntityDetail, EntitySummary } from '@/modules/entity/types/EntityS
 class FakeDocumentRepo implements IDocumentRepository {
   async listDocuments(): Promise<Result<OpenApiDocumentSummary[]>> {
     return ok([
-      { id: 1, title: 'Doc A', description: 'desc', version: 'v1', schemaName: 'public', updatedAt: '2024-01-01T00:00:00Z' }
+      { id: 1, profile: 'postgrest', title: 'Doc A', description: 'desc', version: 'v1', schemaName: 'public', updatedAt: '2024-01-01T00:00:00Z' }
     ]);
   }
   async getSpecs(): Promise<Result<OpenApiSpec[]>> {
@@ -28,7 +28,7 @@ class FakeDocumentRepo implements IDocumentRepository {
   }
   async getDocumentDetail(): Promise<Result<import('@/modules/document/types/DocumentDetail').DocumentDetail>> {
     return ok({
-      id: 1, schemaName: 'public', title: 'Doc A', version: 'v1', description: null,
+      id: 1, schemaName: 'public', profile: 'postgrest', title: 'Doc A', version: 'v1', description: null,
       generationMode: 'entity_and_function', updatedAt: '2024-01-01T00:00:00Z',
       entityOperationCount: 2, functionOperationCount: 0, operationGroupCount: 0, componentCount: 1,
       servers: [], rootSecurity: [], annotation: null

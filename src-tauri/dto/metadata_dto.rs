@@ -50,6 +50,8 @@ pub struct SchemaSummaryDto {
 pub struct DocumentDto {
     pub id: i32,
     pub schema_name: String,
+    /// 契約面。1 スキーマが postgrest と bff を持つので、行は (schema, profile) で一意。
+    pub profile: String,
     pub title: String,
     pub version: String,
     pub description: Option<String>,
@@ -63,6 +65,7 @@ pub struct DocumentDto {
 pub struct DocumentDetailDto {
     pub id: i32,
     pub schema_name: String,
+    pub profile: String,
     pub title: String,
     pub version: String,
     pub description: Option<String>,
@@ -166,6 +169,8 @@ pub struct OperationDto {
 #[serde(rename_all = "camelCase")]
 pub struct OpenApiSpecDto {
     pub schema_name: String,
+    /// どの契約面から出したか。SDK の生成物はこれで別物になる。
+    pub profile: String,
     pub spec: Value,
 }
 
@@ -204,6 +209,35 @@ pub struct EntityDetailDto {
 pub struct ManifestCoverageDto {
     pub function_key: String,
     pub state: String,
+}
+
+/// profile ごとの宣言状態と生成状態。
+/// declared=true / compiled=false は未 compile、逆は manifest から消した後の残骸。
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenApiProfileDto {
+    pub schema_name: String,
+    pub profile: String,
+    pub declared: bool,
+    pub compiled: bool,
+    pub operations: i32,
+    pub operation_groups: i32,
+    /// servers を除いた本体の sha256。環境が変わっても同じ契約なら同じ値。
+    pub document_hash: Option<String>,
+    pub updated_at: Option<String>,
+}
+
+/// 宣言を編集するための入力元。coverage が「何件足りないか」を数えるのに対し、
+/// こちらは「何をどう埋めればよいか」を渡す。arguments を返すので bind を手書きさせない。
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ManifestFunctionDto {
+    pub function_key: String,
+    pub state: String,
+    /// 関数の COMMENT。説明の原本はここで、manifest の description はここから起こす。
+    pub comment: Option<String>,
+    /// [{ name, type, required }]。required は DEFAULT を持たないこと。
+    pub arguments: Value,
 }
 
 /// manifest の静的検証 1 件。最初の 1 件で止めず全件が返る。

@@ -8,7 +8,7 @@
   import type { ComponentSummary } from '@/modules/component/types/ComponentSummary';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
 
-  let { viewModel, schema }: { viewModel: ComponentViewModel; schema: string } = $props();
+  let { viewModel, schema, profile }: { viewModel: ComponentViewModel; schema: string; profile: string } = $props();
 
   const sections = [
     { key: 'schemas', label: 'Schemas' },

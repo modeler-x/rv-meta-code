@@ -2,6 +2,7 @@
 export type DocumentDetail = {
   id: number;
   schemaName: string;
+  profile: string;
   title: string;
   version: string;
   description: string | null;

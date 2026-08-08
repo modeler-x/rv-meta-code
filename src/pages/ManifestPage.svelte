@@ -1,183 +1,148 @@
 <script lang="ts">
   import SectionList from '@/shared/components/SectionList.svelte';
-  import SectionListRow from '@/shared/components/SectionListRow.svelte';
-  import StatusBadge from '@/shared/components/StatusBadge.svelte';
+  import ListRow, { type RowBadge } from '@/shared/components/ListRow.svelte';
+  import SearchBox from '@/shared/components/SearchBox.svelte';
+  import SelectionToolbar from '@/shared/components/SelectionToolbar.svelte';
   import BusyOverlay from '@/shared/components/BusyOverlay.svelte';
-  import ManifestOperationDrawer from '@/shared/components/ManifestOperationDrawer.svelte';
+  import ManifestDrawer from '@/shared/components/ManifestDrawer.svelte';
+  import { RowSelection } from '@/shared/selection/RowSelection.svelte';
   import type { ManifestViewModel } from '@/modules/manifest/viewmodels/ManifestViewModel.svelte';
-  import type { ManifestDiagnostic } from '@/modules/manifest/types/Manifest';
+  import type { ManifestOverview } from '@/modules/manifest/types/Manifest';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
 
-  let { viewModel, schemaName }: { viewModel: ManifestViewModel; schemaName: string } = $props();
+  // マニフェストはスキーマ単位なので、スキーマと同じ一覧の形にする。
+  // 中身（operation ごとの宣言）はオペレーションのページが持つ。
+  let {
+    viewModel,
+    onOpenOperations,
+    onOpenHelp
+  }: {
+    viewModel: ManifestViewModel;
+    onOpenOperations: (schemaName: string, functionKey?: string) => void;
+    onOpenHelp?: (page: string) => void;
+  } = $props();
 
-  // Drawer で開いている operation のキー。診断からのジャンプ先も同じ値で指す。
-  let openedKey = $state<string | null>(null);
-  let jumpLocation = $state<string | null>(null);
+  let query = $state('');
+  let openedSchema = $state<string | null>(null);
+  const selection = new RowSelection<string>();
 
-  const manifest = $derived(
-    (viewModel.state.draft ?? viewModel.state.stored?.manifest ?? null) as Record<string, unknown> | null
-  );
-  const profiles = $derived(
-    (manifest?.profiles ?? {}) as Record<string, Record<string, unknown>>
-  );
-  const operations = $derived(
-    (manifest?.operations ?? {}) as Record<string, Record<string, unknown>>
-  );
-  const operationKeys = $derived(Object.keys(operations).sort());
+  const filtered = $derived.by(() => {
+    const needle = query.trim().toLowerCase();
+    if (needle.length === 0) return viewModel.state.overviews;
+    return viewModel.state.overviews.filter((row) =>
+      `${row.schemaName} ${row.comment ?? ''}`.toLowerCase().includes(needle)
+    );
+  });
+  const filteredNames = $derived(filtered.map((row) => row.schemaName));
 
-  /** その operation に紐づく診断。location が operations."<key>" で始まるものを拾う。 */
-  function diagnosticsFor(key: string): ManifestDiagnostic[] {
-    const prefix = `operations."${key}"`;
-    return viewModel.state.diagnostics.filter((d) => d.location.startsWith(prefix));
+  /** 選択したスキーマの骨子をまとめて起こす。初版かどうかは区別しない。 */
+  async function draftSelected(): Promise<void> {
+    await viewModel.draftMany(selection.selectedWithin(filteredNames));
+    await reload();
   }
 
-  /** 診断の location から operation キーを取り出す。取れなければ null（スキーマ全体の指摘）。 */
-  function keyOf(location: string): string | null {
-    const matched = /^operations\."([^"]+)"/.exec(location);
-    return matched ? matched[1] : null;
+  async function reload(): Promise<void> {
+    await viewModel.loadOverviews(
+      viewModel.state.overviews.map((row) => ({ name: row.schemaName, comment: row.comment }))
+    );
   }
 
-  function openFromDiagnostic(diagnostic: ManifestDiagnostic): void {
-    const key = keyOf(diagnostic.location);
-    if (!key) return;
-    openedKey = key;
-    jumpLocation = diagnostic.location;
+  /** 行のバッジ。状態・profile・診断件数を同じ並びで出す。 */
+  function badgesOf(row: ManifestOverview): RowBadge[] {
+    const badges: RowBadge[] = [
+      {
+        testid: 'manifest-state',
+        label: row.hasManifest ? $t('mf_present') : $t('mf_not_created'),
+        tone: row.hasManifest ? 'success' : 'muted',
+        data: { 'data-state': row.hasManifest ? 'present' : 'absent' }
+      },
+      ...row.profiles.map((profile) => ({
+        testid: 'manifest-profile',
+        label: profile,
+        tone: 'accent' as const,
+        data: { 'data-profile': profile }
+      }))
+    ];
+    for (const [severity, count] of [
+      ['error', row.errorCount],
+      ['warning', row.warningCount]
+    ] as const) {
+      if (count === 0) continue;
+      badges.push({
+        testid: 'manifest-diagnostic-count',
+        label: `${severity} ${count}`,
+        tone: severity === 'error' ? 'danger' : 'warning',
+        data: { 'data-severity': severity, 'data-count': String(count) }
+      });
+    }
+    return badges;
   }
 
-  function routeCount(key: string): number {
-    const routes = operations[key]?.publicRoutes;
-    return Array.isArray(routes) ? routes.length : 0;
+  async function openDrawer(schemaName: string): Promise<void> {
+    await viewModel.load(schemaName);
+    openedSchema = schemaName;
   }
 </script>
 
-{#if viewModel.state.isLoading}
+{#if viewModel.state.isLoading || viewModel.state.isSaving}
   <BusyOverlay />
 {/if}
 
-<div class="flex flex-wrap items-center gap-2 px-1 pb-3">
-  <span class="font-mono text-sm font-semibold">{schemaName}</span>
-  {#if viewModel.blockingCount > 0}
-    <StatusBadge label={`error ${viewModel.blockingCount}`} tone="danger" />
-  {:else if viewModel.state.stored?.manifest}
-    <StatusBadge label={$t('mf_no_violation')} tone="success" />
-  {:else}
-    <StatusBadge label={$t('mf_not_created')} tone="muted" />
-  {/if}
-  {#if viewModel.state.draft}
-    <StatusBadge label={$t('mf_unsaved_draft')} tone="warning" />
-  {/if}
+<SearchBox bind:value={query} placeholder={$t('search_placeholder')} />
 
-  <div class="ml-auto flex gap-2">
-    <button
-      class="rounded-md border border-[color:var(--rvc-border)] px-3 py-1.5 text-xs"
-      onclick={() => viewModel.load(schemaName)}
-    >{$t('mf_reload')}</button>
-    <button
-      class="rounded-md border border-[color:var(--rvc-border)] px-3 py-1.5 text-xs"
-      onclick={() => viewModel.draft()}
-    >{$t('mf_draft')}</button>
-    <button
-      class="rounded-md bg-[color:var(--rvc-accent)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
-      disabled={viewModel.state.isSaving || !manifest}
-      onclick={() => viewModel.save()}
-    >{$t('mf_save')}</button>
-  </div>
-</div>
+<SelectionToolbar
+  allSelected={selection.isAllSelected(filteredNames)}
+  partiallySelected={selection.isPartiallySelected(filteredNames)}
+  selectedCount={selection.selectedWithin(filteredNames).length}
+  onToggleAll={(on) => selection.setAll(filteredNames, on)}
+>
+  <button
+    data-testid="draft-manifest"
+    class="rounded-md bg-[color:var(--rvc-accent)] px-3 py-1.5 text-xs font-semibold text-white"
+    onclick={draftSelected}
+  >{$t('mf_draft')}</button>
+</SelectionToolbar>
 
 {#if viewModel.state.errorMessage}
-  <!-- 投入は検証を通ったときだけ行われる。落ちたら保存されていないことを明示する。 -->
-  <div class="mb-3 rounded-lg border border-[color:#e5484d] px-3.5 py-2.5 text-xs" style="color:#e5484d">
-    {viewModel.state.errorMessage}
+  <div
+    data-testid="save-error"
+    class="mb-3 rounded-lg border px-3.5 py-2.5 text-xs"
+    style="border-color:var(--rvc-danger);color:var(--rvc-danger)"
+  >
+    <span class="rvc-value">{viewModel.state.errorMessage}</span>
     <span class="block text-[color:var(--rvc-muted)]">{$t('mf_save_rejected')}</span>
   </div>
 {/if}
 
-<!-- スキーマ単位の宣言。operation 単位ではないので Drawer ではなくページ本体に置く。 -->
-<SectionList title={$t('mf_sec_profiles')} detail={$t('mf_profiles_hint')}>
-  {#each Object.entries(profiles) as [name, profile]}
-    <SectionListRow>
-      <span class="w-24 font-mono text-xs font-semibold">{name}</span>
-      <span class="min-w-0 flex-1 truncate text-xs text-[color:var(--rvc-muted)]">
-        basePath: {String(profile.basePath ?? '—')} ·
-        generationMode: {String(profile.generationMode ?? '—')} ·
-        stripPrefix.arg: {String(
-          ((profile.naming as Record<string, Record<string, unknown>> | undefined)?.stripPrefix
-            ?.arg as string | undefined) ?? ''
-        ) || '(なし)'}
-      </span>
-    </SectionListRow>
+<SectionList title={`${$t('nav_manifest')} / ${filtered.length}`} detail={$t('mf_list_hint')}>
+  {#each filtered as row}
+    <ListRow
+      testid="manifest-row"
+      data={{ 'data-schema': row.schemaName }}
+      icon={{ label: 'M', color: '#0090a8' }}
+      title={row.schemaName}
+      subtitle={row.hasManifest
+        ? `${row.operationCount} ${$t('mf_unit_operations')} · ${row.publicRouteCount} ${$t('mf_unit_routes')}`
+        : $t('mf_empty')}
+      {query}
+      badges={badgesOf(row)}
+      selected={selection.isSelected(row.schemaName)}
+      onToggle={() => selection.toggle(row.schemaName)}
+      onOpen={() => openDrawer(row.schemaName)}
+      action={{ testid: 'open-operations', label: $t('mf_open_operations'), onClick: () => onOpenOperations(row.schemaName) }}
+    />
   {/each}
-  {#if Object.keys(profiles).length === 0}
-    <div class="px-4 py-6 text-sm text-[color:var(--rvc-muted)]">{$t('mf_empty')}</div>
+  {#if filtered.length === 0}
+    <div class="px-4 py-6 text-sm text-[color:var(--rvc-muted)]">{$t('search_no_match')}</div>
   {/if}
 </SectionList>
 
-<SectionList title={`${$t('mf_sec_operations')} / ${operationKeys.length}`} detail={$t('mf_operations_hint')}>
-  {#each operationKeys as key}
-    {@const routes = routeCount(key)}
-    {@const errors = diagnosticsFor(key).filter((d) => d.severity === 'error').length}
-    <SectionListRow>
-      <button
-        class="flex min-w-0 flex-1 items-center gap-3 text-left"
-        onclick={() => { openedKey = key; jumpLocation = null; }}
-      >
-        <span class="min-w-0 flex-1">
-          <span class="block truncate font-mono text-xs font-semibold">{key}</span>
-          <span class="block text-xs text-[color:var(--rvc-muted)]">
-            operationId: {String(operations[key]?.operationId ?? '—')}
-          </span>
-        </span>
-        {#if routes > 0}
-          <StatusBadge label={`bff ${routes}`} tone="success" />
-        {:else}
-          <StatusBadge label={$t('mf_not_public')} tone="muted" />
-        {/if}
-        {#if errors > 0}
-          <StatusBadge label={`error ${errors}`} tone="danger" />
-        {/if}
-      </button>
-    </SectionListRow>
-  {/each}
-  {#if operationKeys.length === 0}
-    <div class="px-4 py-6 text-sm text-[color:var(--rvc-muted)]">{$t('mf_no_operations')}</div>
-  {/if}
-</SectionList>
-
-<!-- 診断は全件出る。location から編集箇所へ一手で飛べるようにする。 -->
-<SectionList title={`${$t('mf_sec_diagnostics')} / ${viewModel.state.diagnostics.length}`} detail={$t('mf_diagnostics_hint')}>
-  {#each viewModel.state.diagnostics as diagnostic}
-    <SectionListRow>
-      <span
-        class="h-8 w-1 shrink-0 rounded"
-        style={`background:${diagnostic.severity === 'error' ? '#e5484d' : diagnostic.severity === 'warning' ? '#ff9500' : 'var(--rvc-muted)'}`}
-      ></span>
-      <span class="min-w-0 flex-1">
-        <span class="block font-mono text-[11px] font-semibold">{diagnostic.code}</span>
-        <span class="block truncate font-mono text-[11px] text-[color:var(--rvc-muted)]">{diagnostic.location}</span>
-        <span class="block text-xs">{diagnostic.message}</span>
-        {#if diagnostic.hint}
-          <span class="block text-[11px] text-[color:var(--rvc-muted)]">{diagnostic.hint}</span>
-        {/if}
-      </span>
-      {#if keyOf(diagnostic.location)}
-        <button
-          class="shrink-0 text-xs font-semibold text-[color:var(--rvc-accent)]"
-          onclick={() => openFromDiagnostic(diagnostic)}
-        >{$t('mf_jump')}</button>
-      {/if}
-    </SectionListRow>
-  {/each}
-  {#if viewModel.state.diagnostics.length === 0}
-    <div class="px-4 py-6 text-sm text-[color:var(--rvc-muted)]">{$t('mf_no_diagnostics')}</div>
-  {/if}
-</SectionList>
-
-{#if openedKey}
-  <ManifestOperationDrawer
-    operationKey={openedKey}
-    operation={operations[openedKey] ?? {}}
-    diagnostics={diagnosticsFor(openedKey)}
-    {jumpLocation}
-    onClose={() => { openedKey = null; jumpLocation = null; }}
+{#if openedSchema}
+  <ManifestDrawer
+    {viewModel}
+    schemaName={openedSchema}
+    onClose={() => { openedSchema = null; void reload(); }}
+    onOpenOperation={(functionKey) => { onOpenOperations(openedSchema ?? '', functionKey); openedSchema = null; }}
+    {onOpenHelp}
   />
 {/if}

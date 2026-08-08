@@ -1,7 +1,8 @@
 <script lang="ts">
   export let label: string;
   export let tone: 'accent' | 'success' | 'warning' | 'danger' | 'muted' = 'accent';
-  const colors = { accent: 'var(--rvc-accent)', success: '#1a9e4b', warning: '#ff9500', danger: '#e5484d', muted: 'var(--rvc-muted)' };
+  // 色はテーマ変数だけを見る。診断の縦棒とバッジが同じ値になるようにするため。
+  const colors = { accent: 'var(--rvc-accent)', success: 'var(--rvc-success)', warning: 'var(--rvc-warning)', danger: 'var(--rvc-danger)', muted: 'var(--rvc-muted)' };
   $: color = colors[tone];
 </script>
 

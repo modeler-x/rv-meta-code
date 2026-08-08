@@ -14,7 +14,8 @@
   import type { MessageKey } from '@/shared/i18n/messages';
   import { onMount } from 'svelte';
 
-  let { viewModel, schema }: { viewModel: SdkGenerationViewModel; schema: string } = $props();
+  // profile は route から受け取る。ここで既定値を作らない。
+  let { viewModel, schema, profile }: { viewModel: SdkGenerationViewModel; schema: string; profile: string } = $props();
 
   // Generator / Profile は Registry / ストアから取得する（UI に固定配列を持たない）。
   onMount(() => {
@@ -63,7 +64,7 @@
   <IconTile label="S" color="#1a9e4b" />
   <div>
     <h2 class="text-xl font-bold">{$t('sdk_title')}</h2>
-    <p class="font-mono text-xs text-[color:var(--rvc-muted)]">{schema}</p>
+    <p class="font-mono text-xs text-[color:var(--rvc-muted)]" data-testid="sdk-target" data-schema={schema} data-profile={profile}>{schema} / {profile}</p>
   </div>
 </div>
 
@@ -153,7 +154,7 @@
   <button
     class="rounded-md bg-[color:var(--rvc-accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
     disabled={!viewModel.canRun || viewModel.isRunning}
-    onclick={() => viewModel.run(schema)}
+    onclick={() => viewModel.run(schema, profile)}
   >{viewModel.isRunning ? $t('sdk_running') : $t('sdk_run')}</button>
 </div>
 

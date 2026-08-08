@@ -12,13 +12,13 @@ export class ComponentViewModel {
 
   constructor(private readonly componentService: ComponentService) {}
 
-  async load(schema: string): Promise<void> {
+  async load(schema: string, profile: string): Promise<void> {
     this.isLoading = true;
     this.components = [];
     this.issues = [];
     const [componentsResult, reportResult] = await Promise.all([
       this.componentService.loadComponents(schema),
-      this.componentService.validateOpenApi(schema)
+      this.componentService.validateOpenApi(schema, profile)
     ]);
     if (componentsResult.success) {
       this.components = componentsResult.data;

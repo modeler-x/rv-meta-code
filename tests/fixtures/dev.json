@@ -1,0 +1,1463 @@
+{
+    "coverage": {
+        "rv_auth": [
+            {
+                "state": "declared",
+                "functionKey": "check_permission(p_workspace_id uuid, p_application_id uuid, p_resource text, p_action text)"
+            },
+            {
+                "state": "declared",
+                "functionKey": "resolve_current_user()"
+            }
+        ],
+        "rv_note": [
+            {
+                "state": "declared",
+                "functionKey": "apply_operations(p_index_id uuid, p_operations jsonb)"
+            },
+            {
+                "state": "declared",
+                "functionKey": "create_index(p_entity_type text, p_title text)"
+            },
+            {
+                "state": "declared",
+                "functionKey": "delete_index(p_index_id uuid)"
+            },
+            {
+                "state": "declared",
+                "functionKey": "execute_publish(p_execution_id uuid, p_executor_name text)"
+            },
+            {
+                "state": "declared",
+                "functionKey": "get_execution(p_index_id uuid, p_execution_id uuid)"
+            },
+            {
+                "state": "declared",
+                "functionKey": "get_index(p_index_id uuid)"
+            },
+            {
+                "state": "declared",
+                "functionKey": "get_publisher(p_entity_type text)"
+            },
+            {
+                "state": "declared",
+                "functionKey": "list_executions(p_index_id uuid, p_execution_type text, p_status text, p_limit integer, p_offset integer)"
+            },
+            {
+                "state": "declared",
+                "functionKey": "list_indexes(p_entity_type text, p_include_deleted boolean, p_limit integer, p_offset integer)"
+            },
+            {
+                "state": "declared",
+                "functionKey": "list_publishers(p_include_disabled boolean)"
+            },
+            {
+                "state": "declared",
+                "functionKey": "publish_index(p_index_id uuid, p_target_scope text, p_node_ids uuid[], p_reason text, p_options jsonb)"
+            },
+            {
+                "state": "declared",
+                "functionKey": "register_publisher(p_entity_type text, p_contract_version integer, p_handler text, p_description text)"
+            },
+            {
+                "state": "declared",
+                "functionKey": "set_publisher_enabled(p_entity_type text, p_is_enabled boolean)"
+            },
+            {
+                "state": "declared",
+                "functionKey": "update_index(p_index_id uuid, p_title text)"
+            },
+            {
+                "state": "declared",
+                "functionKey": "update_node_properties(p_index_id uuid, p_node_id uuid, p_properties jsonb)"
+            },
+            {
+                "state": "declared",
+                "functionKey": "validate_index(p_index_id uuid, p_target_scope text, p_node_ids uuid[], p_reason text, p_options jsonb)"
+            }
+        ],
+        "rv_intake": [
+            {
+                "state": "undeclared",
+                "functionKey": "compile(p_document_type text)"
+            },
+            {
+                "state": "declared",
+                "functionKey": "receive(p_payload jsonb, p_operation text)"
+            },
+            {
+                "state": "declared",
+                "functionKey": "schema(p_document_type text, p_operation text)"
+            }
+        ]
+    },
+    "profiles": {
+        "rv_auth": [
+            {
+                "profile": "postgrest",
+                "compiled": true,
+                "declared": true,
+                "operations": 92,
+                "schemaName": "rv_auth",
+                "documentHash": "sha256:a658ef85d7be6016e8ba2c2eba4f8544917c1baba804a4d381a01fb8212afe52",
+                "operationGroups": 2
+            }
+        ],
+        "rv_note": [
+            {
+                "profile": "postgrest",
+                "compiled": true,
+                "declared": true,
+                "operations": 16,
+                "schemaName": "rv_note",
+                "documentHash": "sha256:aa0069cbe0556cfe403c6a1ba31a817ce8ed17ac3b630a380777b2cc8e900e16",
+                "operationGroups": 1
+            }
+        ],
+        "rv_intake": [
+            {
+                "profile": "bff",
+                "compiled": true,
+                "declared": true,
+                "operations": 4,
+                "schemaName": "rv_intake",
+                "documentHash": "sha256:26442104baad97ec6a12e4db26b167d5a8d41d75fe201056c044a3d8e028395b",
+                "operationGroups": 1
+            },
+            {
+                "profile": "postgrest",
+                "compiled": true,
+                "declared": true,
+                "operations": 2,
+                "schemaName": "rv_intake",
+                "documentHash": "sha256:9e255d43a712cc37aab5c5141b314c885efb61d5c2ec2302ab9a2f4b1bc93adf",
+                "operationGroups": 1
+            }
+        ]
+    },
+    "documents": [
+        {
+            "id": 1,
+            "title": "RV Auth API",
+            "profile": "postgrest",
+            "version": "1.0.0",
+            "updatedAt": "2026-08-08THH24:54:28Z",
+            "schemaName": "rv_auth",
+            "description": "OpenAPI metadata generated from PostgreSQL catalog for schema rv_auth"
+        },
+        {
+            "id": 4,
+            "title": "RV Intake API",
+            "profile": "bff",
+            "version": "1.0.0",
+            "updatedAt": "2026-08-08THH24:54:34Z",
+            "schemaName": "rv_intake",
+            "description": "OpenAPI metadata generated from PostgreSQL catalog for schema rv_intake"
+        },
+        {
+            "id": 3,
+            "title": "RV Intake API",
+            "profile": "postgrest",
+            "version": "1.0.0",
+            "updatedAt": "2026-08-08THH24:54:34Z",
+            "schemaName": "rv_intake",
+            "description": "OpenAPI metadata generated from PostgreSQL catalog for schema rv_intake"
+        },
+        {
+            "id": 2,
+            "title": "RV Note API",
+            "profile": "postgrest",
+            "version": "1.0.0",
+            "updatedAt": "2026-08-08THH24:54:31Z",
+            "schemaName": "rv_note",
+            "description": "OpenAPI metadata generated from PostgreSQL catalog for schema rv_note"
+        }
+    ],
+    "functions": {
+        "rv_auth": [
+            {
+                "state": "declared",
+                "comment": "Current UserのWorkspace/Application resource:action PermissionをDefault Denyで評価する。",
+                "arguments": [
+                    {
+                        "name": "p_workspace_id",
+                        "type": "uuid",
+                        "required": true
+                    },
+                    {
+                        "name": "p_application_id",
+                        "type": "uuid",
+                        "required": true
+                    },
+                    {
+                        "name": "p_resource",
+                        "type": "text",
+                        "required": true
+                    },
+                    {
+                        "name": "p_action",
+                        "type": "text",
+                        "required": true
+                    }
+                ],
+                "functionKey": "check_permission(p_workspace_id uuid, p_application_id uuid, p_resource text, p_action text)"
+            },
+            {
+                "state": "declared",
+                "comment": "検証済みJWTからCurrent Userを解決する。旧type/rolesは返さずprincipal_name/statusを返す。",
+                "arguments": [
+                ],
+                "functionKey": "resolve_current_user()"
+            }
+        ],
+        "rv_note": [
+            {
+                "state": "declared",
+                "comment": "指定IndexのNodeに対するcreate、rename、move、delete操作を配列順に一つのトランザクションで適用する。",
+                "arguments": [
+                    {
+                        "name": "p_index_id",
+                        "type": "uuid",
+                        "required": true
+                    },
+                    {
+                        "name": "p_operations",
+                        "type": "jsonb",
+                        "required": true
+                    }
+                ],
+                "functionKey": "apply_operations(p_index_id uuid, p_operations jsonb)"
+            },
+            {
+                "state": "declared",
+                "comment": "Entity Typeと名称を検証し、新しい編集用Indexを作成する。",
+                "arguments": [
+                    {
+                        "name": "p_entity_type",
+                        "type": "text",
+                        "required": true
+                    },
+                    {
+                        "name": "p_title",
+                        "type": "text",
+                        "required": true
+                    }
+                ],
+                "functionKey": "create_index(p_entity_type text, p_title text)"
+            },
+            {
+                "state": "declared",
+                "comment": "指定Indexへ削除日時と削除主体を設定して論理削除する。",
+                "arguments": [
+                    {
+                        "name": "p_index_id",
+                        "type": "uuid",
+                        "required": true
+                    }
+                ],
+                "functionKey": "delete_index(p_index_id uuid)"
+            },
+            {
+                "state": "declared",
+                "comment": "queued状態のPublish Executionを対応するPublisher Pluginで実行し、完了または失敗結果を保存する。",
+                "arguments": [
+                    {
+                        "name": "p_execution_id",
+                        "type": "uuid",
+                        "required": true
+                    },
+                    {
+                        "name": "p_executor_name",
+                        "type": "text",
+                        "required": false
+                    }
+                ],
+                "functionKey": "execute_publish(p_execution_id uuid, p_executor_name text)"
+            },
+            {
+                "state": "declared",
+                "comment": "指定Indexに属するExecutionの状態、進捗件数、処理結果詳細を取得する。",
+                "arguments": [
+                    {
+                        "name": "p_index_id",
+                        "type": "uuid",
+                        "required": true
+                    },
+                    {
+                        "name": "p_execution_id",
+                        "type": "uuid",
+                        "required": true
+                    }
+                ],
+                "functionKey": "get_execution(p_index_id uuid, p_execution_id uuid)"
+            },
+            {
+                "state": "declared",
+                "comment": "指定Indexと、そのIndexに属する未削除Node一覧を取得する。",
+                "arguments": [
+                    {
+                        "name": "p_index_id",
+                        "type": "uuid",
+                        "required": true
+                    }
+                ],
+                "functionKey": "get_index(p_index_id uuid)"
+            },
+            {
+                "state": "declared",
+                "comment": "指定Entity Typeに登録されたPublisher Pluginの定義と有効状態を取得する。",
+                "arguments": [
+                    {
+                        "name": "p_entity_type",
+                        "type": "text",
+                        "required": true
+                    }
+                ],
+                "functionKey": "get_publisher(p_entity_type text)"
+            },
+            {
+                "state": "declared",
+                "comment": "指定IndexのValidation、PublishなどのExecution履歴を条件付きで取得する。",
+                "arguments": [
+                    {
+                        "name": "p_index_id",
+                        "type": "uuid",
+                        "required": true
+                    },
+                    {
+                        "name": "p_execution_type",
+                        "type": "text",
+                        "required": false
+                    },
+                    {
+                        "name": "p_status",
+                        "type": "text",
+                        "required": false
+                    },
+                    {
+                        "name": "p_limit",
+                        "type": "integer",
+                        "required": false
+                    },
+                    {
+                        "name": "p_offset",
+                        "type": "integer",
+                        "required": false
+                    }
+                ],
+                "functionKey": "list_executions(p_index_id uuid, p_execution_type text, p_status text, p_limit integer, p_offset integer)"
+            },
+            {
+                "state": "declared",
+                "comment": "Entity Type、論理削除の包含、ページ条件を指定してIndex一覧を取得する。",
+                "arguments": [
+                    {
+                        "name": "p_entity_type",
+                        "type": "text",
+                        "required": false
+                    },
+                    {
+                        "name": "p_include_deleted",
+                        "type": "boolean",
+                        "required": false
+                    },
+                    {
+                        "name": "p_limit",
+                        "type": "integer",
+                        "required": false
+                    },
+                    {
+                        "name": "p_offset",
+                        "type": "integer",
+                        "required": false
+                    }
+                ],
+                "functionKey": "list_indexes(p_entity_type text, p_include_deleted boolean, p_limit integer, p_offset integer)"
+            },
+            {
+                "state": "declared",
+                "comment": "Entity Typeごとに登録されたPublisher Pluginを一覧取得する。",
+                "arguments": [
+                    {
+                        "name": "p_include_disabled",
+                        "type": "boolean",
+                        "required": false
+                    }
+                ],
+                "functionKey": "list_publishers(p_include_disabled boolean)"
+            },
+            {
+                "state": "declared",
+                "comment": "指定Indexの全Nodeまたは選択Nodeを業務テーブルへ反映するため、Publish Executionをqueued状態で登録する。",
+                "arguments": [
+                    {
+                        "name": "p_index_id",
+                        "type": "uuid",
+                        "required": true
+                    },
+                    {
+                        "name": "p_target_scope",
+                        "type": "text",
+                        "required": false
+                    },
+                    {
+                        "name": "p_node_ids",
+                        "type": "uuid[]",
+                        "required": false
+                    },
+                    {
+                        "name": "p_reason",
+                        "type": "text",
+                        "required": false
+                    },
+                    {
+                        "name": "p_options",
+                        "type": "jsonb",
+                        "required": false
+                    }
+                ],
+                "functionKey": "publish_index(p_index_id uuid, p_target_scope text, p_node_ids uuid[], p_reason text, p_options jsonb)"
+            },
+            {
+                "state": "declared",
+                "comment": "共通jsonb契約を満たすPlugin関数をEntity TypeのPublisherとして登録または更新する。",
+                "arguments": [
+                    {
+                        "name": "p_entity_type",
+                        "type": "text",
+                        "required": true
+                    },
+                    {
+                        "name": "p_contract_version",
+                        "type": "integer",
+                        "required": true
+                    },
+                    {
+                        "name": "p_handler",
+                        "type": "text",
+                        "required": true
+                    },
+                    {
+                        "name": "p_description",
+                        "type": "text",
+                        "required": false
+                    }
+                ],
+                "functionKey": "register_publisher(p_entity_type text, p_contract_version integer, p_handler text, p_description text)"
+            },
+            {
+                "state": "declared",
+                "comment": "指定Entity TypeのPublisher Pluginを新しいPublishで選択可能または選択不可に変更する。",
+                "arguments": [
+                    {
+                        "name": "p_entity_type",
+                        "type": "text",
+                        "required": true
+                    },
+                    {
+                        "name": "p_is_enabled",
+                        "type": "boolean",
+                        "required": true
+                    }
+                ],
+                "functionKey": "set_publisher_enabled(p_entity_type text, p_is_enabled boolean)"
+            },
+            {
+                "state": "declared",
+                "comment": "指定Indexの名称を部分更新し、更新後のIndexを返す。",
+                "arguments": [
+                    {
+                        "name": "p_index_id",
+                        "type": "uuid",
+                        "required": true
+                    },
+                    {
+                        "name": "p_title",
+                        "type": "text",
+                        "required": true
+                    }
+                ],
+                "functionKey": "update_index(p_index_id uuid, p_title text)"
+            },
+            {
+                "state": "declared",
+                "comment": "指定NodeのEntity固有propertiesをJSON object全体で置換する。",
+                "arguments": [
+                    {
+                        "name": "p_index_id",
+                        "type": "uuid",
+                        "required": true
+                    },
+                    {
+                        "name": "p_node_id",
+                        "type": "uuid",
+                        "required": true
+                    },
+                    {
+                        "name": "p_properties",
+                        "type": "jsonb",
+                        "required": true
+                    }
+                ],
+                "functionKey": "update_node_properties(p_index_id uuid, p_node_id uuid, p_properties jsonb)"
+            },
+            {
+                "state": "declared",
+                "comment": "指定Indexの全Nodeまたは選択Nodeを検証するため、Validation Executionをqueued状態で登録する。",
+                "arguments": [
+                    {
+                        "name": "p_index_id",
+                        "type": "uuid",
+                        "required": true
+                    },
+                    {
+                        "name": "p_target_scope",
+                        "type": "text",
+                        "required": false
+                    },
+                    {
+                        "name": "p_node_ids",
+                        "type": "uuid[]",
+                        "required": false
+                    },
+                    {
+                        "name": "p_reason",
+                        "type": "text",
+                        "required": false
+                    },
+                    {
+                        "name": "p_options",
+                        "type": "jsonb",
+                        "required": false
+                    }
+                ],
+                "functionKey": "validate_index(p_index_id uuid, p_target_scope text, p_node_ids uuid[], p_reason text, p_options jsonb)"
+            }
+        ],
+        "rv_intake": [
+            {
+                "state": "undeclared",
+                "comment": "レジストリから rv_intake.formats を再生成する。NULL を渡すと全 document_type を対象にする。生成される行数は rv_intake.document_operations の行数と一致する。",
+                "arguments": [
+                    {
+                        "name": "p_document_type",
+                        "type": "text",
+                        "required": false
+                    }
+                ],
+                "functionKey": "compile(p_document_type text)"
+            },
+            {
+                "state": "declared",
+                "comment": "文書を受信して検証結果を返す。ペイロードは検証前に rv_intake.inbox へ保存し、拒否時も行を残す。不合格時は例外ではなく HTTP 422 を設定する。",
+                "arguments": [
+                    {
+                        "name": "p_payload",
+                        "type": "jsonb",
+                        "required": true
+                    },
+                    {
+                        "name": "p_operation",
+                        "type": "text",
+                        "required": false
+                    }
+                ],
+                "functionKey": "receive(p_payload jsonb, p_operation text)"
+            },
+            {
+                "state": "declared",
+                "comment": "この (document_type, operation) の文書全体を検証するために使う JSON Schema。create / update / remove は受信の検証に、fetch / search は SDK と AI へ入出力の形を示すために使う。",
+                "arguments": [
+                    {
+                        "name": "p_document_type",
+                        "type": "text",
+                        "required": true
+                    },
+                    {
+                        "name": "p_operation",
+                        "type": "text",
+                        "required": true
+                    }
+                ],
+                "functionKey": "schema(p_document_type text, p_operation text)"
+            }
+        ]
+    },
+    "manifests": {
+        "rv_auth": {
+            "schema": "rv_auth",
+            "profiles": {
+                "postgrest": {
+                    "title": "RV Auth API",
+                    "naming": {
+                        "case": {
+                            "property": "snake"
+                        },
+                        "stripPrefix": {
+                            "arg": ""
+                        }
+                    },
+                    "basePath": "auth",
+                    "operationIdStyle": "bare"
+                }
+            },
+            "operations": {
+                "resolve_current_user()": {
+                    "tags": [
+                        "Auth"
+                    ],
+                    "summary": "Current Userを解決する",
+                    "security": [
+                        {
+                            "bearerAuth": [
+                            ]
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "application/vnd.pgrst.object+json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "required": [
+                                            "user_id",
+                                            "principal_name",
+                                            "status"
+                                        ],
+                                        "properties": {
+                                            "status": {
+                                                "type": "string"
+                                            },
+                                            "user_id": {
+                                                "type": "string",
+                                                "format": "uuid"
+                                            },
+                                            "principal_name": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "description": "OK"
+                        }
+                    },
+                    "description": "検証済みJWTからCurrent Userを解決する。RoleはWorkspace依存のため返さない。",
+                    "operationId": "resolveCurrentUser",
+                    "operationGroup": "Auth"
+                },
+                "check_permission(p_workspace_id uuid, p_application_id uuid, p_resource text, p_action text)": {
+                    "tags": [
+                        "Authorization"
+                    ],
+                    "summary": "Workspace Permissionを判定する",
+                    "security": [
+                        {
+                            "bearerAuth": [
+                            ]
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "application/vnd.pgrst.object+json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "required": [
+                                            "allowed",
+                                            "reason",
+                                            "roles",
+                                            "matched_permissions"
+                                        ],
+                                        "properties": {
+                                            "roles": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "reason": {
+                                                "type": "string"
+                                            },
+                                            "allowed": {
+                                                "type": "boolean"
+                                            },
+                                            "matched_permissions": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "description": "Decision"
+                        }
+                    },
+                    "description": "Current UserのWorkspace/Application resource:action Permissionを評価する。",
+                    "operationId": "checkPermission",
+                    "operationGroup": "Authorization"
+                }
+            }
+        },
+        "rv_note": {
+            "schema": "rv_note",
+            "profiles": {
+                "postgrest": {
+                    "title": "RV Note API",
+                    "basePath": "note",
+                    "generationMode": "function_only"
+                }
+            },
+            "operations": {
+                "get_index(p_index_id uuid)": {
+                    "tags": [
+                        "Note"
+                    ],
+                    "security": [
+                        {
+                            "bearerAuth": [
+                            ]
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object"
+                                    }
+                                }
+                            },
+                            "description": "OK"
+                        }
+                    },
+                    "description": "指定Indexと、そのIndexに属する未削除Node一覧を取得する。\n",
+                    "operationId": "getIndex",
+                    "operationGroup": "Note"
+                },
+                "delete_index(p_index_id uuid)": {
+                    "tags": [
+                        "Note"
+                    ],
+                    "security": [
+                        {
+                            "bearerAuth": [
+                            ]
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object"
+                                    }
+                                }
+                            },
+                            "description": "OK"
+                        }
+                    },
+                    "description": "指定Indexへ削除日時と削除主体を設定して論理削除する。\n",
+                    "operationId": "deleteIndex",
+                    "operationGroup": "Note"
+                },
+                "get_publisher(p_entity_type text)": {
+                    "tags": [
+                        "Note"
+                    ],
+                    "security": [
+                        {
+                            "bearerAuth": [
+                            ]
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object"
+                                    }
+                                }
+                            },
+                            "description": "OK"
+                        }
+                    },
+                    "description": "指定Entity Typeに登録されたPublisher Pluginの定義と有効状態を取得する。\n",
+                    "operationId": "getPublisher",
+                    "operationGroup": "Note"
+                },
+                "list_publishers(p_include_disabled boolean)": {
+                    "tags": [
+                        "Note"
+                    ],
+                    "security": [
+                        {
+                            "bearerAuth": [
+                            ]
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object"
+                                    }
+                                }
+                            },
+                            "description": "OK"
+                        }
+                    },
+                    "description": "Entity Typeごとに登録されたPublisher Pluginを一覧取得する。\n",
+                    "operationId": "listPublishers",
+                    "operationGroup": "Note"
+                },
+                "update_index(p_index_id uuid, p_title text)": {
+                    "tags": [
+                        "Note"
+                    ],
+                    "security": [
+                        {
+                            "bearerAuth": [
+                            ]
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object"
+                                    }
+                                }
+                            },
+                            "description": "OK"
+                        }
+                    },
+                    "description": "指定Indexの名称を部分更新し、更新後のIndexを返す。\n",
+                    "operationId": "updateIndex",
+                    "operationGroup": "Note"
+                },
+                "create_index(p_entity_type text, p_title text)": {
+                    "tags": [
+                        "Note"
+                    ],
+                    "security": [
+                        {
+                            "bearerAuth": [
+                            ]
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object"
+                                    }
+                                }
+                            },
+                            "description": "OK"
+                        }
+                    },
+                    "description": "Entity Typeと名称を検証し、新しい編集用Indexを作成する。\n",
+                    "operationId": "createIndex",
+                    "operationGroup": "Note"
+                },
+                "get_execution(p_index_id uuid, p_execution_id uuid)": {
+                    "tags": [
+                        "Note"
+                    ],
+                    "security": [
+                        {
+                            "bearerAuth": [
+                            ]
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object"
+                                    }
+                                }
+                            },
+                            "description": "OK"
+                        }
+                    },
+                    "description": "指定Indexに属するExecutionの状態、進捗件数、処理結果詳細を取得する。\n",
+                    "operationId": "getExecution",
+                    "operationGroup": "Note"
+                },
+                "apply_operations(p_index_id uuid, p_operations jsonb)": {
+                    "tags": [
+                        "Note"
+                    ],
+                    "security": [
+                        {
+                            "bearerAuth": [
+                            ]
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object"
+                                    }
+                                }
+                            },
+                            "description": "OK"
+                        }
+                    },
+                    "description": "指定IndexのNodeに対するcreate、rename、move、delete操作を配列順に一つのトランザクションで適用する。\n",
+                    "operationId": "applyOperations",
+                    "operationGroup": "Note"
+                },
+                "execute_publish(p_execution_id uuid, p_executor_name text)": {
+                    "tags": [
+                        "Note"
+                    ],
+                    "security": [
+                        {
+                            "bearerAuth": [
+                            ]
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object"
+                                    }
+                                }
+                            },
+                            "description": "OK"
+                        }
+                    },
+                    "description": "queued状態のPublish Executionを対応するPublisher Pluginで実行し、完了または失敗結果を保存する。\n",
+                    "operationId": "executePublish",
+                    "operationGroup": "Note"
+                },
+                "set_publisher_enabled(p_entity_type text, p_is_enabled boolean)": {
+                    "tags": [
+                        "Note"
+                    ],
+                    "security": [
+                        {
+                            "bearerAuth": [
+                            ]
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object"
+                                    }
+                                }
+                            },
+                            "description": "OK"
+                        }
+                    },
+                    "description": "指定Entity TypeのPublisher Pluginを新しいPublishで選択可能または選択不可に変更する。\n",
+                    "operationId": "setPublisherEnabled",
+                    "operationGroup": "Note"
+                },
+                "update_node_properties(p_index_id uuid, p_node_id uuid, p_properties jsonb)": {
+                    "tags": [
+                        "Note"
+                    ],
+                    "security": [
+                        {
+                            "bearerAuth": [
+                            ]
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object"
+                                    }
+                                }
+                            },
+                            "description": "OK"
+                        }
+                    },
+                    "description": "指定NodeのEntity固有propertiesをJSON object全体で置換する。\n",
+                    "operationId": "updateNodeProperties",
+                    "operationGroup": "Note"
+                },
+                "list_indexes(p_entity_type text, p_include_deleted boolean, p_limit integer, p_offset integer)": {
+                    "tags": [
+                        "Note"
+                    ],
+                    "security": [
+                        {
+                            "bearerAuth": [
+                            ]
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object"
+                                    }
+                                }
+                            },
+                            "description": "OK"
+                        }
+                    },
+                    "description": "Entity Type、論理削除の包含、ページ条件を指定してIndex一覧を取得する。\n",
+                    "operationId": "listIndexes",
+                    "operationGroup": "Note"
+                },
+                "publish_index(p_index_id uuid, p_target_scope text, p_node_ids uuid[], p_reason text, p_options jsonb)": {
+                    "tags": [
+                        "Note"
+                    ],
+                    "security": [
+                        {
+                            "bearerAuth": [
+                            ]
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object"
+                                    }
+                                }
+                            },
+                            "description": "OK"
+                        }
+                    },
+                    "description": "指定Indexの全Nodeまたは選択Nodeを業務テーブルへ反映するため、Publish Executionをqueued状態で登録する。\n",
+                    "operationId": "publishIndex",
+                    "operationGroup": "Note"
+                },
+                "register_publisher(p_entity_type text, p_contract_version integer, p_handler text, p_description text)": {
+                    "tags": [
+                        "Note"
+                    ],
+                    "security": [
+                        {
+                            "bearerAuth": [
+                            ]
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object"
+                                    }
+                                }
+                            },
+                            "description": "OK"
+                        }
+                    },
+                    "description": "共通jsonb契約を満たすPlugin関数をEntity TypeのPublisherとして登録または更新する。\n",
+                    "operationId": "registerPublisher",
+                    "operationGroup": "Note"
+                },
+                "validate_index(p_index_id uuid, p_target_scope text, p_node_ids uuid[], p_reason text, p_options jsonb)": {
+                    "tags": [
+                        "Note"
+                    ],
+                    "security": [
+                        {
+                            "bearerAuth": [
+                            ]
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object"
+                                    }
+                                }
+                            },
+                            "description": "OK"
+                        }
+                    },
+                    "description": "指定Indexの全Nodeまたは選択Nodeを検証するため、Validation Executionをqueued状態で登録する。\n",
+                    "operationId": "validateIndex",
+                    "operationGroup": "Note"
+                },
+                "list_executions(p_index_id uuid, p_execution_type text, p_status text, p_limit integer, p_offset integer)": {
+                    "tags": [
+                        "Note"
+                    ],
+                    "security": [
+                        {
+                            "bearerAuth": [
+                            ]
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object"
+                                    }
+                                }
+                            },
+                            "description": "OK"
+                        }
+                    },
+                    "description": "指定IndexのValidation、PublishなどのExecution履歴を条件付きで取得する。\n",
+                    "operationId": "listExecutions",
+                    "operationGroup": "Note"
+                }
+            }
+        },
+        "rv_intake": {
+            "schema": "rv_intake",
+            "profiles": {
+                "bff": {
+                    "title": "RV Intake API",
+                    "naming": {
+                        "case": {
+                            "property": "camel"
+                        },
+                        "stripPrefix": {
+                            "arg": "p_"
+                        }
+                    },
+                    "basePath": "intake",
+                    "generationMode": "function_only",
+                    "operationIdStyle": "bare"
+                },
+                "postgrest": {
+                    "title": "RV Intake API",
+                    "naming": {
+                        "case": {
+                            "property": "snake"
+                        },
+                        "stripPrefix": {
+                            "arg": ""
+                        }
+                    },
+                    "basePath": "intake",
+                    "generationMode": "function_only",
+                    "operationIdStyle": "bare"
+                }
+            },
+            "operations": {
+                "receive(p_payload jsonb, p_operation text)": {
+                    "tags": [
+                        "Intake"
+                    ],
+                    "security": [
+                        {
+                            "bearerAuth": [
+                            ]
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "required": [
+                                            "inbox_id",
+                                            "status"
+                                        ],
+                                        "properties": {
+                                            "errors": {
+                                                "type": "object",
+                                                "required": [
+                                                    "truncated",
+                                                    "probes",
+                                                    "messages"
+                                                ],
+                                                "properties": {
+                                                    "probes": {
+                                                        "type": "integer",
+                                                        "description": "位置特定で検証を実行した回数。envelope 起因では 0"
+                                                    },
+                                                    "envelope": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "string"
+                                                        },
+                                                        "description": "envelope 起因の理由。入っているとき messages は空"
+                                                    },
+                                                    "messages": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "required": [
+                                                                "index",
+                                                                "errors"
+                                                            ],
+                                                            "properties": {
+                                                                "index": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "errors": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "type": "string"
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
+                                                        "description": "不合格 Header。index は document_messages 上の 0 起点位置"
+                                                    },
+                                                    "truncated": {
+                                                        "type": "boolean",
+                                                        "description": "上限で打ち切ったか。false なら error_count は正確な総数"
+                                                    }
+                                                },
+                                                "description": "status が rejected のときだけ入る"
+                                            },
+                                            "status": {
+                                                "enum": [
+                                                    "accepted",
+                                                    "rejected"
+                                                ],
+                                                "type": "string"
+                                            },
+                                            "inbox_id": {
+                                                "type": "integer",
+                                                "format": "int64",
+                                                "description": "rv_intake.inbox の行 id"
+                                            },
+                                            "error_count": {
+                                                "type": "integer",
+                                                "description": "不合格の件数。envelope 起因なら envelope エラー数、Header 起因なら不合格 Header 数"
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "description": "受信して検証した。status が accepted なら合格、rejected なら不合格。どちらでも inbox には記録が残る"
+                        },
+                        "422": {
+                            "description": "検証不合格。本文は 200 と同じ形で status は rejected"
+                        }
+                    },
+                    "description": "文書を受信して検証結果を返す。ペイロードは検証前に rv_intake.inbox へ保存し、拒否時も行を残す。不合格時は例外ではなく HTTP 422 を設定する。\n",
+                    "operationId": "receiveDocument",
+                    "publicRoutes": [
+                        {
+                            "bind": {
+                                "p_payload": {
+                                    "from": "body"
+                                },
+                                "p_operation": {
+                                    "const": "create"
+                                }
+                            },
+                            "path": "/{documentType}",
+                            "method": "POST",
+                            "summary": "文書を登録する",
+                            "parameters": [
+                                {
+                                    "in": "path",
+                                    "name": "documentType",
+                                    "schema": {
+                                        "type": "string"
+                                    },
+                                    "required": true,
+                                    "description": "文書種別"
+                                }
+                            ],
+                            "operationId": "createDocument"
+                        },
+                        {
+                            "bind": {
+                                "p_payload": {
+                                    "from": "body"
+                                },
+                                "p_operation": {
+                                    "const": "update"
+                                }
+                            },
+                            "path": "/{documentType}/{documentNumber}",
+                            "method": "PUT",
+                            "summary": "文書を置換する",
+                            "parameters": [
+                                {
+                                    "in": "path",
+                                    "name": "documentType",
+                                    "schema": {
+                                        "type": "string"
+                                    },
+                                    "required": true,
+                                    "description": "文書種別"
+                                },
+                                {
+                                    "in": "path",
+                                    "name": "documentNumber",
+                                    "schema": {
+                                        "type": "string"
+                                    },
+                                    "required": true,
+                                    "description": "文書番号"
+                                }
+                            ],
+                            "operationId": "updateDocument"
+                        },
+                        {
+                            "bind": {
+                                "p_payload": {
+                                    "from": "body"
+                                },
+                                "p_operation": {
+                                    "const": "remove"
+                                }
+                            },
+                            "path": "/{documentType}/{documentNumber}/actions/cancel",
+                            "method": "POST",
+                            "summary": "文書を取り消す",
+                            "parameters": [
+                                {
+                                    "in": "path",
+                                    "name": "documentType",
+                                    "schema": {
+                                        "type": "string"
+                                    },
+                                    "required": true,
+                                    "description": "文書種別"
+                                },
+                                {
+                                    "in": "path",
+                                    "name": "documentNumber",
+                                    "schema": {
+                                        "type": "string"
+                                    },
+                                    "required": true,
+                                    "description": "文書番号"
+                                }
+                            ],
+                            "operationId": "cancelDocument"
+                        }
+                    ],
+                    "operationGroup": "Intake"
+                },
+                "schema(p_document_type text, p_operation text)": {
+                    "tags": [
+                        "Intake"
+                    ],
+                    "security": [
+                        {
+                            "bearerAuth": [
+                            ]
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "nullable": true,
+                                        "description": "JSON Schema 2020-12。$defs に到達可能なセグメント、allOf に必須性の系統を持つ"
+                                    }
+                                }
+                            },
+                            "description": "コンパイル済みの JSON Schema。宣言されていない (document_type, operation) では null"
+                        }
+                    },
+                    "description": "この (document_type, operation) の文書全体を検証するために使う JSON Schema。create / update / remove は受信の検証に、fetch / search は SDK と AI へ入出力の形を示すために使う。\n",
+                    "operationId": "getDocumentSchema",
+                    "publicRoutes": [
+                        {
+                            "bind": {
+                                "p_operation": {
+                                    "from": "path",
+                                    "name": "operation"
+                                },
+                                "p_document_type": {
+                                    "from": "path",
+                                    "name": "documentType"
+                                }
+                            },
+                            "path": "/schemas/{documentType}/{operation}",
+                            "method": "GET",
+                            "summary": "この文書種別と操作の JSON Schema を返す",
+                            "parameters": [
+                                {
+                                    "in": "path",
+                                    "name": "documentType",
+                                    "schema": {
+                                        "type": "string"
+                                    },
+                                    "required": true,
+                                    "description": "文書種別"
+                                },
+                                {
+                                    "in": "path",
+                                    "name": "operation",
+                                    "schema": {
+                                        "type": "string"
+                                    },
+                                    "required": true,
+                                    "description": "操作種別。create / update / remove / fetch / search"
+                                }
+                            ],
+                            "operationId": "getDocumentSchema"
+                        }
+                    ],
+                    "operationGroup": "Intake"
+                }
+            }
+        }
+    },
+    "diagnostics": {
+        "rv_auth": [
+        ],
+        "rv_note": [
+        ],
+        "rv_intake": [
+            {
+                "code": "function_not_declared",
+                "hint": "公開するなら operations へ足す",
+                "message": "rv_intake.compile(p_document_type text) は manifest に無いため公開されない",
+                "location": "operations.\"compile(p_document_type text)\"",
+                "severity": "info"
+            }
+        ]
+    },
+    "list_schemas": [
+        {
+            "comment": "Authドメイン専用スキーマ。Public関数は接頭辞なし、内部関数は先頭 _ で表す。",
+            "viewCount": 0,
+            "schemaName": "rv_auth",
+            "tableCount": 15
+        },
+        {
+            "comment": "文書受信。人が保守するメッセージセグメントのレジストリ、生成された JSON Schema、受信ログを持つ。",
+            "viewCount": 0,
+            "schemaName": "rv_intake",
+            "tableCount": 10
+        },
+        {
+            "comment": "Noteドメイン専用スキーマ。\n公開APIは manifest に載せた関数のみで定義し、テーブルの自動 CRUD は出さない（function_only）。\n宣言は 03_function/06_openapi/001_manifest.sql が持つ。",
+            "viewCount": 3,
+            "schemaName": "rv_note",
+            "tableCount": 5
+        }
+    ]
+}

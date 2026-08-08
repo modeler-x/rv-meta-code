@@ -12,15 +12,15 @@ export class DocumentService {
     return this.documentRepository.listDocuments();
   }
 
-  async loadSpecs(schemas: string[]): Promise<Result<OpenApiSpec[]>> {
-    return this.documentRepository.getSpecs(schemas);
+  async loadSpecs(schemas: string[], profile: string): Promise<Result<OpenApiSpec[]>> {
+    return this.documentRepository.getSpecs(schemas, profile);
   }
 
-  async loadDocumentDetail(schema: string): Promise<Result<DocumentDetail>> {
-    return this.documentRepository.getDocumentDetail(schema);
+  async loadDocumentDetail(schema: string, profile: string): Promise<Result<DocumentDetail>> {
+    return this.documentRepository.getDocumentDetail(schema, profile);
   }
 
-  async validateOpenApi(schema: string): Promise<Result<ValidationReport>> {
-    return this.documentRepository.validateOpenApi(schema);
+  async validateOpenApi(schema: string, profile: string): Promise<Result<ValidationReport>> {
+    return this.documentRepository.validateOpenApi(schema, profile);
   }
 }
