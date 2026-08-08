@@ -66,4 +66,19 @@ test.describe('ドキュメント', () => {
       })
       .toBe(document.profile);
   });
+
+  test('行から次の成果物（SDK）へ進める', async ({ page }) => {
+    // 成果物から次の成果物を作る。契約面はその行から引き継ぐ。
+    const document = fixture.documents[0];
+    await page
+      .locator(
+        `[data-testid="row-generate-sdk"][data-schema="${document.schemaName}"][data-profile="${document.profile}"]`
+      )
+      .click();
+
+    // 由来（スキーマと契約面）が SDK の画面に出る。
+    const target = page.locator('[data-testid="sdk-target"]');
+    await expect(target).toHaveAttribute('data-schema', document.schemaName);
+    await expect(target).toHaveAttribute('data-profile', document.profile);
+  });
 });

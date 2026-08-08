@@ -9,7 +9,16 @@
   import type { DocumentViewModel } from '@/modules/document/viewmodels/DocumentViewModel.svelte';
   import { translate as t, language } from '@/shared/i18n/i18n.svelte';
   import { formatRelativeTime } from '@/shared/time/relativeTime';
-  let { viewModel, onOpenDocument }: { viewModel: DocumentViewModel; onOpenDocument: (documentId: string) => void } = $props();
+  let {
+    viewModel,
+    onOpenDocument,
+    onGenerateSdk
+  }: {
+    viewModel: DocumentViewModel;
+    onOpenDocument: (documentId: string) => void;
+    /** 次の成果物へ。契約面はこの行から引き継ぐ。 */
+    onGenerateSdk?: (schemaName: string, profile: string) => void;
+  } = $props();
 
   let query = $state('');
   const selection = new RowSelection();
@@ -58,6 +67,15 @@
     <span data-testid="mixed-profile" class="text-[11px]" style="color:var(--rvc-warning)">{$t('doc_mixed_profile')}</span>
   {/if}
   <button
+    data-testid="generate-sdk"
+    class="rounded-md bg-[color:var(--rvc-accent)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+    disabled={selectedProfile === null || selectedDocuments.length !== 1}
+    onclick={() => {
+      const target = selectedDocuments[0];
+      if (target) onGenerateSdk?.(target.schemaName, target.profile);
+    }}
+  >{$t('sdk_generate_button')}</button>
+  <button
     data-testid="export-spec"
     class="rounded-md bg-[color:var(--rvc-accent)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
     disabled={viewModel.isExporting || selectedProfile === null}
@@ -81,6 +99,14 @@
       selected={selection.isSelected(document.id)}
       onToggle={() => selection.toggle(document.id)}
       onOpen={() => onOpenDocument(String(document.id))}
+      actions={onGenerateSdk
+        ? [{
+            testid: 'row-generate-sdk',
+            label: $t('sdk_generate_button'),
+            onClick: () => onGenerateSdk(document.schemaName, document.profile),
+            data: { 'data-schema': document.schemaName, 'data-profile': document.profile }
+          }]
+        : []}
     />
   {/each}
   {#if filtered.length === 0}

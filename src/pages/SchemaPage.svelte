@@ -6,6 +6,7 @@
   import { RowSelection } from '@/shared/selection/RowSelection.svelte';
   import type { SchemaViewModel } from '@/modules/schema/viewmodels/SchemaViewModel.svelte';
   import type { ManifestViewModel } from '@/modules/manifest/viewmodels/ManifestViewModel.svelte';
+  import TaskSheet from '@/shared/components/TaskSheet.svelte';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
   let {
     viewModel,
@@ -48,10 +49,8 @@
    * 生成（compile）はここに置かない。生成できるかどうかは manifest があるかで決まるので、
    * その判断材料を持たない画面に操作を置くと、押してからエラーで気づくことになる。
    */
-  async function draftSelected(): Promise<void> {
-    await manifestViewModel.draftMany(selection.selectedWithin(filteredNames));
-    selection.clear();
-    onDrafted?.();
+  function draftSelected(): void {
+    manifestViewModel.askDraft(selection.selectedWithin(filteredNames));
   }
 </script>
 
@@ -96,3 +95,17 @@
     <div class="px-4 py-6 text-sm text-[color:var(--rvc-muted)]">{$t('search_no_match')}</div>
   {/if}
 </SectionList>
+
+<TaskSheet
+  state={manifestViewModel.state.draftTask.state}
+  title={$t('mf_draft')}
+  plan={manifestViewModel.state.draftTask.plan}
+  result={manifestViewModel.state.draftTask.result}
+  emptyNotice={$t('mf_draft_nothing')}
+  progress={manifestViewModel.state.draftTask.progress}
+  errorMessage={manifestViewModel.state.errorMessage ?? ''}
+  onCancel={() => manifestViewModel.closeDraftTask()}
+  onRun={() => manifestViewModel.runDraft()}
+  onClose={() => { manifestViewModel.closeDraftTask(); selection.clear(); }}
+  next={{ label: $t('mf_next_manifest'), onNext: () => { manifestViewModel.closeDraftTask(); selection.clear(); onDrafted?.(); } }}
+/>

@@ -59,6 +59,17 @@ export type ManifestViewModelState = {
   /** 宣言できる項目の定義。rv_meta.manifest_fields() が原本。 */
   fields: ManifestField[];
   /**
+   * 「カタログから起こす」の進行。押しても何も起きないように見える状態を作らないため、
+   * 実行前に何が増えるかを持ち、実行後は結果を持つ。
+   */
+  draftTask: {
+    state: 'idle' | 'confirm' | 'running' | 'done' | 'error';
+    schemas: string[];
+    plan: string[];
+    result: string[];
+    progress: number;
+  };
+  /**
    * 全スキーマの公開関数。一覧を横断させるために持つ。
    * 編集は 1 スキーマずつなので、行を開いたときに load() で切り替える。
    */
@@ -90,7 +101,8 @@ export class ManifestViewModel {
     coverageBySchema: {},
     overviews: [],
     fields: [],
-    catalog: []
+    catalog: [],
+    draftTask: { state: 'idle', schemas: [], plan: [], result: [], progress: 0 }
   });
 
   constructor(private readonly manifestService: ManifestService) {}
@@ -230,24 +242,70 @@ export class ManifestViewModel {
   }
 
   /**
+   * 「カタログから起こす」の確認。何件増えるかを先に示す。
+   *
+   * 宣言が既に揃っているスキーマでは中身が変わらない。実行しても表示が変わらないのは
+   * 正しい挙動なので、押す前にそう伝える。押しても無反応に見える状態を作らない。
+   */
+  askDraft(schemaNames: string[]): void {
+    if (schemaNames.length === 0) return;
+    const plan: string[] = [];
+    for (const name of schemaNames) {
+      const counts = this.state.coverageBySchema[name];
+      const overview = this.state.overviews.find((row) => row.schemaName === name);
+      const adding = counts?.undeclared ?? 0;
+      if (!overview?.hasManifest) plan.push(`${name} — 新規に作る`);
+      else if (adding > 0) plan.push(`${name} — ${adding} 件の宣言を足す`);
+    }
+    this.state.draftTask = { state: 'confirm', schemas: schemaNames, plan, result: [], progress: 0 };
+  }
+
+  /**
    * 選択したスキーマの骨子をまとめて起こして保存する。
    *
    * 起こしただけでは DB に入らないので一覧の状態が変わらず、押した意味が見えない。
    * draft_manifest は既存の宣言を書き換えない（足すだけ）ので、保存まで進めてよい。
    */
-  async draftMany(schemaNames: string[]): Promise<void> {
-    this.state.isSaving = true;
+  async runDraft(): Promise<void> {
+    const schemaNames = this.state.draftTask.schemas;
+    this.state.draftTask = { ...this.state.draftTask, state: 'running', progress: 0 };
     this.state.errorMessage = null;
-    for (const name of schemaNames) {
+    const result: string[] = [];
+
+    for (const [index, name] of schemaNames.entries()) {
+      const before = this.state.overviews.find((row) => row.schemaName === name)?.operationCount ?? 0;
       const drafted = await this.manifestService.draftManifest(name);
       if (!drafted.success) {
         this.state.errorMessage = drafted.error.message;
-        continue;
+        this.state.draftTask = { ...this.state.draftTask, state: 'error' };
+        return;
       }
       const saved = await this.manifestService.saveManifest(name, drafted.data);
-      if (!saved.success) this.state.errorMessage = saved.error.message;
+      if (!saved.success) {
+        this.state.errorMessage = saved.error.message;
+        this.state.draftTask = { ...this.state.draftTask, state: 'error' };
+        return;
+      }
+      const after = Object.keys(drafted.data.operations ?? {}).length;
+      if (after !== before) result.push(`${name} — 宣言 ${before} → ${after}`);
+      this.state.draftTask = {
+        ...this.state.draftTask,
+        progress: Math.round(((index + 1) / schemaNames.length) * 100)
+      };
     }
-    this.state.isSaving = false;
+
+    this.state.draftTask = { ...this.state.draftTask, state: 'done', result, progress: 100 };
+  }
+
+  closeDraftTask(): void {
+    this.state.draftTask = { state: 'idle', schemas: [], plan: [], result: [], progress: 0 };
+  }
+
+  /** 確認を挟まずに起こす。確認済みの経路とテストから使う。 */
+  async draftMany(schemaNames: string[]): Promise<void> {
+    this.state.draftTask = { state: 'confirm', schemas: schemaNames, plan: [], result: [], progress: 0 };
+    await this.runDraft();
+    this.closeDraftTask();
   }
 
   /**

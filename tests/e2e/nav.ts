@@ -8,10 +8,15 @@ export async function gotoPage(page: Page, route: string): Promise<void> {
   await page.locator(`[data-testid="nav"][data-nav="${route}"]`).click();
 }
 
-/** マニフェスト一覧を開き、そのスキーマの行の Drawer まで進む。 */
+/**
+ * マニフェスト一覧を開き、そのスキーマの診断 Drawer まで進む。
+ * 行の本体は次の工程（オペレーション）へ進む導線なので、Drawer は「診断」から開く。
+ */
 export async function openManifestDrawer(page: Page, schema: string): Promise<void> {
   await gotoPage(page, 'manifest');
-  await page.locator(`[data-testid="manifest-row"][data-schema="${schema}"] button`).first().click();
+  await page
+    .locator(`[data-testid="manifest-row"][data-schema="${schema}"] [data-testid="open-diagnostics"]`)
+    .click();
   await expect(page.locator(`[data-testid="manifest-drawer"][data-schema="${schema}"]`)).toBeVisible();
 }
 

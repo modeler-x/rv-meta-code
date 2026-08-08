@@ -5,6 +5,7 @@
   import SelectionToolbar from '@/shared/components/SelectionToolbar.svelte';
   import BusyOverlay from '@/shared/components/BusyOverlay.svelte';
   import ManifestDrawer from '@/shared/components/ManifestDrawer.svelte';
+  import TaskSheet from '@/shared/components/TaskSheet.svelte';
   import { RowSelection } from '@/shared/selection/RowSelection.svelte';
   import type { ManifestViewModel } from '@/modules/manifest/viewmodels/ManifestViewModel.svelte';
   import type { GenerationViewModel } from '@/modules/generation/viewmodels/GenerationViewModel.svelte';
@@ -151,8 +152,12 @@
       badges={badgesOf(row)}
       selected={selection.isSelected(row.schemaName)}
       onToggle={() => selection.toggle(row.schemaName)}
-      onOpen={() => openDrawer(row.schemaName)}
-      action={{ testid: 'open-operations', label: $t('open'), onClick: () => onOpenOperations(row.schemaName) }}
+      onOpen={() => onOpenOperations(row.schemaName)}
+      actions={[
+        { testid: 'open-operations', label: $t('open'), onClick: () => onOpenOperations(row.schemaName) },
+        { testid: 'redraft-manifest', label: $t('mf_redraft'), onClick: () => viewModel.askDraft([row.schemaName]) },
+        { testid: 'open-diagnostics', label: $t('mf_diagnostics_open'), onClick: () => openDrawer(row.schemaName) }
+      ]}
     />
   {/each}
   {#if filtered.length === 0}
@@ -169,3 +174,16 @@
     {onOpenHelp}
   />
 {/if}
+
+<TaskSheet
+  state={viewModel.state.draftTask.state}
+  title={$t('mf_draft')}
+  plan={viewModel.state.draftTask.plan}
+  result={viewModel.state.draftTask.result}
+  emptyNotice={$t('mf_draft_nothing')}
+  progress={viewModel.state.draftTask.progress}
+  errorMessage={viewModel.state.errorMessage ?? ''}
+  onCancel={() => viewModel.closeDraftTask()}
+  onRun={() => viewModel.runDraft()}
+  onClose={() => { viewModel.closeDraftTask(); void reload(); }}
+/>

@@ -46,16 +46,41 @@ test.describe('スキーマ', () => {
     await expect(page.locator('[data-testid="generate-openapi"]')).toHaveCount(0);
   });
 
-  test('選んだスキーマのマニフェストを作れる', async ({ page }) => {
+  test('作る前に何が起きるかを示し、終わったら次の工程へ渡す', async ({ page }) => {
+    // 押しても何も起きないように見える操作を作らない。
     const target = schemaNames[0];
     await page.locator(`[data-testid="schema-row"][data-schema="${target}"] [data-testid="schema-row-select"]`).check();
     await page.locator('[data-testid="draft-manifest"]').click();
 
+    const sheet = page.locator('[data-testid="task-sheet"]');
+    await expect(sheet).toHaveAttribute('data-state', 'confirm');
+    await sheet.locator('[data-testid="task-run"]').click();
+
+    await expect(sheet).toHaveAttribute('data-state', 'done');
     await expect
       .poll(async () =>
         (await calls(page))
           .filter((c) => c.command === 'load_manifest')
           .map((c) => (c.args as { schemaName: string }).schemaName))
       .toContain(target);
+
+    // 結果から次の工程へ。戻ってナビを押し直させない。
+    await sheet.locator('[data-testid="task-next"]').click();
+    await expect(page.locator(`[data-testid="manifest-row"][data-schema="${target}"]`)).toBeVisible();
+  });
+
+  test('変化が無いときは、無いと言う', async ({ page }) => {
+    // 宣言が揃っているスキーマでは中身が変わらない。それを黙って実行しない。
+    const target = schemaNames.find(
+      (name) => fixture.manifests[name] && !(fixture.coverage[name] ?? []).some((c) => c.state === 'undeclared')
+    );
+    test.skip(!target, '宣言が揃ったスキーマがフィクスチャに無い');
+
+    await page.locator(`[data-testid="schema-row"][data-schema="${target}"] [data-testid="schema-row-select"]`).check();
+    await page.locator('[data-testid="draft-manifest"]').click();
+
+    const sheet = page.locator('[data-testid="task-sheet"]');
+    await expect(sheet.locator('[data-testid="task-plan"]')).toHaveCount(0);
+    await expect(sheet.locator('[data-testid="task-empty"]')).toBeVisible();
   });
 });

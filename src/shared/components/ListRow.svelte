@@ -32,6 +32,7 @@
     query = '',
     badges = [],
     action,
+    actions = [],
     selected,
     onToggle,
     onOpen
@@ -45,7 +46,9 @@
     /** 検索語。一致箇所を強調する。 */
     query?: string;
     badges?: RowBadge[];
+    /** 単一の操作。複数置くときは actions を使う。 */
     action?: RowAction;
+    actions?: RowAction[];
     /** 選択機構を使わない一覧では省略する。 */
     selected?: boolean;
     onToggle?: () => void;
@@ -81,13 +84,13 @@
         {/each}
       </span>
     </button>
-    {#if action}
+    {#each action ? [action, ...actions] : actions as item}
       <button
-        data-testid={action.testid}
-        {...action.data ?? {}}
+        data-testid={item.testid}
+        {...item.data ?? {}}
         class="shrink-0 rounded-md border border-[color:var(--rvc-border)] px-2.5 py-1 text-xs"
-        onclick={action.onClick}
-      >{action.label}</button>
-    {/if}
+        onclick={item.onClick}
+      >{item.label}</button>
+    {/each}
   </span>
 </SectionListRow>

@@ -197,7 +197,7 @@
         {:else if route.name === 'schema'}
           <SchemaPage viewModel={schemaViewModel} manifestViewModel={manifestViewModel} onOpenManifest={openManifest} onDrafted={() => openManifest('')} />
         {:else if route.name === 'documents'}
-          <DocumentListPage viewModel={documentViewModel} onOpenDocument={openDocument} />
+          <DocumentListPage viewModel={documentViewModel} onOpenDocument={openDocument} onGenerateSdk={(schemaName, profile) => openSdkGeneration(schemaName, profile, route)} />
         {:else if route.name === 'documentDetail' && selectedDocument}
           <DocumentDetailPage document={selectedDocument} documentViewModel={documentViewModel} entityViewModel={entityViewModel} operationGroupViewModel={operationGroupViewModel} onOpenEntity={(entityId) => openEntity(entityId, route)} onOpenGroup={(groupKey) => openOperationGroup(selectedDocument.schemaName, groupKey, route)} onGenerateSdk={() => openSdkGeneration(selectedDocument.schemaName, selectedDocument.profile, route)} onOpenComponents={() => openComponents(selectedDocument.schemaName, selectedDocument.profile, route)} />
         {:else if route.name === 'sdkGeneration'}
