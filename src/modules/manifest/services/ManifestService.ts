@@ -14,10 +14,16 @@ import {
   type StoredManifest,
   type SyncState
 } from '@/modules/manifest/types/Manifest';
+import type { ManifestField } from '@/modules/manifest/types/ManifestField';
 import type { Result } from '@/shared/result/Result';
 
 export class ManifestService {
   constructor(private readonly manifestRepository: IManifestRepository) {}
+
+  /** 宣言できる項目の定義。画面はこれを描き、項目一覧を持たない。 */
+  async loadFields(): Promise<Result<ManifestField[]>> {
+    return this.manifestRepository.fields();
+  }
 
   async loadCoverage(schemaName: string): Promise<Result<ManifestCoverage[]>> {
     return this.manifestRepository.coverage(schemaName);

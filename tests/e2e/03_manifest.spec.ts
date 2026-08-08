@@ -48,7 +48,16 @@ test.describe('マニフェスト', () => {
     // 足しただけで未保存として出る。
     await expect(page.locator('[data-testid="dirty"]')).toHaveAttribute('data-dirty', 'true');
 
-    await page.locator('[data-testid="profile-field"][data-profile="bff"][data-field="basePath"]').fill('external');
+    // 項目は「有効値 + 由来」で並ぶ。上書きしたいものだけ触る。
+    const table = page.locator('[data-testid="profile-fields"][data-profile="bff"]');
+    await table.locator('[data-testid="show-all"]').click();
+    const row = table.locator('[data-testid="field-row"][data-field="basePath"]');
+    await row.locator('[data-testid="field-edit"]').click();
+    await row.locator('[data-testid="field-input"]').fill('external');
+    await row.locator('[data-testid="field-commit"]').click();
+    await expect(table.locator('[data-testid="field-row"][data-field="basePath"]'))
+      .toHaveAttribute('data-source', 'own');
+
     await page.locator('[data-testid="save-manifest"]').click();
 
     await expect
@@ -68,7 +77,11 @@ test.describe('マニフェスト', () => {
     await openManifestDrawer(page, schema);
 
     await page.getByRole('button', { name: 'defaults', exact: true }).click();
-    await page.locator('[data-testid="defaults-field"][data-field="operationGroup"]').fill('Changed');
+    const table = page.locator('[data-testid="defaults-fields"]');
+    const row = table.locator('[data-testid="field-row"][data-field="operationGroup"]');
+    await row.locator('[data-testid="field-edit"]').click();
+    await row.locator('[data-testid="field-input"]').fill('Changed');
+    await row.locator('[data-testid="field-commit"]').click();
     await page.locator('[data-testid="save-manifest"]').click();
 
     // Drawer から保存したので、原因は Drawer の中に出る。
@@ -78,20 +91,26 @@ test.describe('マニフェスト', () => {
     await page.screenshot({ path: 'tests/e2e/artifacts/05-save-rejected.png', fullPage: true });
   });
 
-  test('骨子をまとめて起こすと宣言が増える', async ({ page }) => {
-    const target = schemaNames.find((name) => (fixture.coverage[name] ?? []).some((c) => c.state === 'undeclared'));
-    test.skip(!target, '未宣言の関数を持つスキーマがフィクスチャに無い');
-
-    const before = Object.keys(fixture.manifests[target!].operations).length;
+  test('主操作は OpenAPI の生成だけ', async ({ page }) => {
+    // 起こし直しと編集は成果物ごとの行為なので行に置く。ページで押せるものを 1 つに絞る。
+    const target = schemaNames[0];
     await page.locator(`[data-testid="manifest-row"][data-schema="${target}"] [data-testid="manifest-row-select"]`).check();
-    await page.locator('[data-testid="draft-manifest"]').click();
 
-    await expect
-      .poll(async () => {
-        const saved = (await calls(page)).filter((c) => c.command === 'load_manifest').pop();
-        const manifest = (saved?.args as { manifest?: { operations?: object } })?.manifest;
-        return Object.keys(manifest?.operations ?? {}).length;
-      })
-      .toBeGreaterThan(before);
+    await expect(page.locator('[data-testid="generate-openapi"]')).toBeEnabled();
+    await expect(page.locator('[data-testid="draft-manifest"]')).toHaveCount(0);
+  });
+
+  test('マニフェストが無い行を含むと生成できない', async ({ page }) => {
+    // compile は manifest_missing で止まる。押してから気づくのではなく押せない形にする。
+    const withoutManifest = fixture.list_schemas
+      .map((s) => s.schemaName)
+      .find((name) => !fixture.manifests[name]);
+    test.skip(!withoutManifest, 'マニフェストの無いスキーマがフィクスチャに無い');
+
+    await page
+      .locator(`[data-testid="manifest-row"][data-schema="${withoutManifest}"] [data-testid="manifest-row-select"]`)
+      .check();
+    await expect(page.locator('[data-testid="generate-blocked"]')).toBeVisible();
+    await expect(page.locator('[data-testid="generate-openapi"]')).toBeDisabled();
   });
 });

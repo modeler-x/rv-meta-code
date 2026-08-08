@@ -40,4 +40,22 @@ test.describe('スキーマ', () => {
     expect((await calls(page)).some((c) => c.command === 'draft_manifest')).toBe(false);
     expect((await calls(page)).some((c) => c.command === 'load_manifest')).toBe(false);
   });
+
+  test('生成の操作は置かない（manifest の有無を知らない画面だから）', async ({ page }) => {
+    // 押してからエラーで気づくのではなく、そもそも置かない。
+    await expect(page.locator('[data-testid="generate-openapi"]')).toHaveCount(0);
+  });
+
+  test('選んだスキーマのマニフェストを作れる', async ({ page }) => {
+    const target = schemaNames[0];
+    await page.locator(`[data-testid="schema-row"][data-schema="${target}"] [data-testid="schema-row-select"]`).check();
+    await page.locator('[data-testid="draft-manifest"]').click();
+
+    await expect
+      .poll(async () =>
+        (await calls(page))
+          .filter((c) => c.command === 'load_manifest')
+          .map((c) => (c.args as { schemaName: string }).schemaName))
+      .toContain(target);
+  });
 });

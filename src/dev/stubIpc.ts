@@ -44,6 +44,7 @@ export function installStubIpc(): void {
   const diagnostics = data.diagnostics as Record<string, unknown[]>;
   const profiles = data.profiles as Record<string, { profile: string }[]>;
   const documents = data.documents as { schemaName: string; profile: string }[];
+  const fields = data.fields as unknown[];
 
   const connections = [
     {
@@ -105,6 +106,7 @@ export function installStubIpc(): void {
         spec: { openapi: '3.1.0', info: { title: schemaName, version: '1.0.0' }, paths: {} }
       }));
     },
+    manifest_fields: () => fields,
     manifest_coverage: (args) => coverage[String(args.schemaName)] ?? [],
     manifest_functions: (args) => functions[String(args.schemaName)] ?? [],
     diagnose_manifest: (args) => diagnostics[String(args.schemaName)] ?? [],

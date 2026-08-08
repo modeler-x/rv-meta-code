@@ -5,19 +5,19 @@
   import SelectionToolbar from '@/shared/components/SelectionToolbar.svelte';
   import { RowSelection } from '@/shared/selection/RowSelection.svelte';
   import type { SchemaViewModel } from '@/modules/schema/viewmodels/SchemaViewModel.svelte';
-  import type { GenerationViewModel } from '@/modules/generation/viewmodels/GenerationViewModel.svelte';
   import type { ManifestViewModel } from '@/modules/manifest/viewmodels/ManifestViewModel.svelte';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
   let {
     viewModel,
-    generationViewModel,
     manifestViewModel,
-    onOpenManifest
+    onOpenManifest,
+    onDrafted
   }: {
     viewModel: SchemaViewModel;
-    generationViewModel: GenerationViewModel;
     manifestViewModel: ManifestViewModel;
     onOpenManifest?: (schemaName: string) => void;
+    /** 作り終えたら次の工程（マニフェスト）へ渡すために呼ぶ。 */
+    onDrafted?: () => void;
   } = $props();
 
   // ここで出すのは「マニフェストがあるか」だけ。宣言が何件埋まっているかは
@@ -42,10 +42,16 @@
   });
   const filteredNames = $derived(filtered.map((schema) => schema.name));
 
-  function generateSelected(): void {
-    const names = new Set(selection.selectedWithin(filteredNames));
-    const schemas = filtered.filter((schema) => names.has(schema.name));
-    generationViewModel.askGeneration(schemas);
+  /**
+   * 選んだスキーマのマニフェストを作る。
+   *
+   * 生成（compile）はここに置かない。生成できるかどうかは manifest があるかで決まるので、
+   * その判断材料を持たない画面に操作を置くと、押してからエラーで気づくことになる。
+   */
+  async function draftSelected(): Promise<void> {
+    await manifestViewModel.draftMany(selection.selectedWithin(filteredNames));
+    selection.clear();
+    onDrafted?.();
   }
 </script>
 
@@ -58,9 +64,10 @@
   onToggleAll={(on) => selection.setAll(filteredNames, on)}
 >
   <button
+    data-testid="draft-manifest"
     class="rounded-md bg-[color:var(--rvc-accent)] px-3 py-1.5 text-xs font-semibold text-white"
-    onclick={generateSelected}
-  >{$t('generate')}</button>
+    onclick={draftSelected}
+  >{$t('mf_draft')}</button>
 </SelectionToolbar>
 
 <SectionList title={`${$t('sec_schemas')} / ${filtered.length}`} detail={$t('schemas_hint')}>

@@ -30,7 +30,7 @@ use crate::commands::metadata::validate_openapi::validate_openapi;
 use crate::commands::schema::compile::compile_schema;
 use crate::commands::metadata::openapi_profiles::openapi_profiles;
 use crate::commands::manifest::query::{
-    diagnose_manifest, get_manifest, manifest_coverage, manifest_functions,
+    diagnose_manifest, get_manifest, manifest_coverage, manifest_fields, manifest_functions,
 };
 use crate::commands::manifest::write::{draft_manifest, load_manifest};
 use crate::commands::schema::diagnose::diagnose_route_conflicts;
@@ -66,6 +66,7 @@ pub fn run() {
             diagnose_route_conflicts,
             openapi_profiles,
             manifest_coverage,
+            manifest_fields,
             manifest_functions,
             diagnose_manifest,
             get_manifest,

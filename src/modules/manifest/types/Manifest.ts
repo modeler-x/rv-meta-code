@@ -89,6 +89,12 @@ export type ManifestNaming = {
 
 export type ManifestProfile = {
   basePath?: string;
+  /**
+   * その契約面の全 operation に効く既定。
+   * profile は信頼境界なので、内部契約と公開契約で security が変わる。
+   * ここが無いと、公開ルートごとに同じ宣言を書き直すことになる。
+   */
+  defaults?: ManifestDefaults;
   title?: string;
   version?: string;
   description?: string;

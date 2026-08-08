@@ -211,6 +211,28 @@ pub struct ManifestCoverageDto {
     pub state: String,
 }
 
+/// manifest に宣言できる項目 1 件の定義。
+///
+/// 画面はこれを描き、項目一覧を自分で持たない。持つと DB が読むキーが増えたときに漏れ、
+/// 欠けていること自体が分からなくなる。
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ManifestFieldDto {
+    /// profile / defaults / operation / route
+    pub level: String,
+    /// ドット記法の相対パス。例: naming.stripPrefix.arg
+    pub field: String,
+    /// text / choice / chips / textarea / responses / routes / bind / auto
+    pub kind: String,
+    pub options: Option<Value>,
+    pub is_required: bool,
+    /// 未指定のとき受け継ぐ層。優先順位の高い順。
+    pub inherits: Vec<String>,
+    /// 推論元。null なら推論しない。
+    pub derived_from: Option<String>,
+    pub note: Option<String>,
+}
+
 /// profile ごとの宣言状態と生成状態。
 /// declared=true / compiled=false は未 compile、逆は manifest から消した後の残骸。
 #[derive(Debug, Serialize)]

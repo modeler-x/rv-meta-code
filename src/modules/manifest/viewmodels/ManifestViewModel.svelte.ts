@@ -8,6 +8,19 @@ import {
   type ManifestService
 } from '@/modules/manifest/services/ManifestService';
 import {
+  applyOverride,
+  defaultsFields as buildDefaultsFields,
+  operationFields as buildOperationFields,
+  profileFields as buildProfileFields,
+  routeFields as buildRouteFields,
+  toDeclared
+} from '@/modules/manifest/services/EffectiveField';
+import type {
+  EffectiveField,
+  ManifestField,
+  OverrideScope
+} from '@/modules/manifest/types/ManifestField';
+import {
   PROFILE_NAMES,
   type BindRule,
   type CoverageState,
@@ -43,6 +56,24 @@ export type ManifestViewModelState = {
   /** 一覧用。スキーマ名 → 件数。 */
   coverageBySchema: Record<string, CoverageCounts>;
   overviews: ManifestOverview[];
+  /** 宣言できる項目の定義。rv_meta.manifest_fields() が原本。 */
+  fields: ManifestField[];
+  /**
+   * 全スキーマの公開関数。一覧を横断させるために持つ。
+   * 編集は 1 スキーマずつなので、行を開いたときに load() で切り替える。
+   */
+  catalog: OperationRow[];
+};
+
+/** オペレーション一覧の 1 行。スキーマを跨いで並べる。 */
+export type OperationRow = {
+  schemaName: string;
+  functionKey: string;
+  operationId: string | null;
+  state: CoverageState;
+  declared: boolean;
+  routeCount: number;
+  description: string;
 };
 
 export class ManifestViewModel {
@@ -57,7 +88,9 @@ export class ManifestViewModel {
     functions: [],
     diagnostics: [],
     coverageBySchema: {},
-    overviews: []
+    overviews: [],
+    fields: [],
+    catalog: []
   });
 
   constructor(private readonly manifestService: ManifestService) {}
@@ -150,6 +183,39 @@ export class ManifestViewModel {
     );
   }
 
+  /**
+   * 全スキーマの公開関数を 1 本の一覧にする。
+   *
+   * スキーマを選ぶドロップダウンを置かず、絞り込みは検索窓に任せるため、
+   * 行はスキーマを跨いで並べる。他スキーマの同種の宣言と見比べられる。
+   */
+  async loadCatalog(schemaNames: string[]): Promise<void> {
+    const rows = await Promise.all(
+      schemaNames.map(async (schemaName) => {
+        const [functions, stored] = await Promise.all([
+          this.manifestService.loadFunctions(schemaName),
+          this.manifestService.loadManifest(schemaName)
+        ]);
+        if (!functions.success) return [];
+        const operations = (stored.success ? stored.data.manifest?.operations : undefined) ?? {};
+        return functions.data.map((fn) => {
+          const operation = operations[fn.functionKey];
+          return {
+            schemaName,
+            functionKey: fn.functionKey,
+            operationId: operation?.operationId ?? null,
+            state: fn.state,
+            declared: operation != null,
+            routeCount: operation?.publicRoutes?.length ?? 0,
+            // 説明は宣言が原本だが、無ければ関数の COMMENT。空欄を並べても読めない。
+            description: operation?.description ?? fn.comment ?? ''
+          } satisfies OperationRow;
+        });
+      })
+    );
+    this.state.catalog = rows.flat();
+  }
+
   /** 一覧行の件数だけを引き直す。中身は開いたときに読む。 */
   async loadCoverageFor(schemaNames: string[]): Promise<void> {
     const next: Record<string, CoverageCounts> = {};
@@ -184,11 +250,104 @@ export class ManifestViewModel {
     this.state.isSaving = false;
   }
 
+  /**
+   * 項目定義を読む。スキーマに依存しないので 1 度だけ。
+   * これが無いと編集画面は何も描けないので、失敗は握り潰さない。
+   */
+  async loadFields(): Promise<void> {
+    if (this.state.fields.length > 0) return;
+    const result = await this.manifestService.loadFields();
+    if (result.success) this.state.fields = result.data;
+    else this.state.errorMessage = result.error.message;
+  }
+
+  // ────────────────────────────── 有効値（値 + 由来）
+
+  private context(profile: ProfileName, functionKey?: string) {
+    return {
+      manifest: this.requireDraft(),
+      profile,
+      functionKey,
+      fn: functionKey ? this.functionOf(functionKey) : undefined,
+      schemaName: this.state.schemaName ?? ''
+    };
+  }
+
+  operationFields(functionKey: string, profile: ProfileName): EffectiveField[] {
+    return buildOperationFields(
+      this.state.fields,
+      this.context(profile, functionKey),
+      this.operationOf(functionKey)
+    );
+  }
+
+  profileFields(profile: ProfileName): EffectiveField[] {
+    return buildProfileFields(this.state.fields, this.context(profile));
+  }
+
+  defaultsFields(profile: ProfileName): EffectiveField[] {
+    return buildDefaultsFields(this.state.fields, this.context(profile));
+  }
+
+  routeFieldsOf(functionKey: string, index: number, profile: ProfileName): EffectiveField[] {
+    const route = this.routesOf(functionKey)[index];
+    if (!route) return [];
+    return buildRouteFields(
+      this.state.fields,
+      this.context(profile, functionKey),
+      this.operationOf(functionKey),
+      route,
+      this.argumentsOf(functionKey)
+    );
+  }
+
+  /**
+   * 上書きする。適用範囲をその場で選ばせるので、人は defaults と
+   * profiles.<profile>.defaults の階層を先に理解しなくてよい。
+   */
+  override(
+    field: ManifestField,
+    input: string,
+    scope: OverrideScope,
+    profile: ProfileName,
+    functionKey: string | null
+  ): void {
+    applyOverride(
+      this.requireDraft(),
+      scope,
+      profile,
+      functionKey,
+      field,
+      toDeclared(input, field)
+    );
+  }
+
+  /** 上書きを外して継承・推論へ戻す。 */
+  clearOverride(field: ManifestField, profile: ProfileName, functionKey: string | null): void {
+    applyOverride(this.requireDraft(), 'own', profile, functionKey, field, undefined);
+  }
+
+  /** 選んだ operation へ同じ値をまとめて書く。1500 件を 1 件ずつ開かせない。 */
+  overrideMany(
+    functionKeys: string[],
+    field: ManifestField,
+    input: string,
+    scope: OverrideScope,
+    profile: ProfileName
+  ): void {
+    if (scope !== 'own') {
+      this.override(field, input, scope, profile, null);
+      return;
+    }
+    for (const key of functionKeys) this.override(field, input, 'own', profile, key);
+  }
+
   async load(schemaName: string): Promise<void> {
     this.state.isLoading = true;
     this.state.errorMessage = null;
     this.state.schemaName = schemaName;
 
+    await this.loadFields();
     const [stored, coverage, diagnostics, functions] = await Promise.all([
       this.manifestService.loadManifest(schemaName),
       this.manifestService.loadCoverage(schemaName),

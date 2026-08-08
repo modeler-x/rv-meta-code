@@ -8,6 +8,7 @@ import type {
   StoredManifest
 } from '@/modules/manifest/types/Manifest';
 import { fixture } from '../fixtures';
+import type { ManifestField } from '@/modules/manifest/types/ManifestField';
 
 /**
  * dev DB から採った実データを返す Repository。
@@ -32,6 +33,10 @@ export class FakeManifestRepository implements IManifestRepository {
     const override = this.options.manifests?.[schemaName];
     if (override) return override;
     return (fixture.manifests[schemaName] as ManifestDocument | undefined) ?? null;
+  }
+
+  async fields(): Promise<Result<ManifestField[]>> {
+    return ok(fixture.fields as ManifestField[]);
   }
 
   async coverage(schemaName: string): Promise<Result<ManifestCoverage[]>> {

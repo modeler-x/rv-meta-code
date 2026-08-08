@@ -1,5 +1,6 @@
 import { ok, fail, type Result } from '@/shared/result/Result';
 import { invokeTauri } from '@/shared/ipc/invokeTauri';
+import type { ManifestField } from '@/modules/manifest/types/ManifestField';
 import type {
   ManifestCoverage,
   ManifestDiagnostic,
@@ -9,6 +10,8 @@ import type {
 } from '@/modules/manifest/types/Manifest';
 
 export interface IManifestRepository {
+  /** 宣言できる項目の定義。スキーマに依存しないので引数を取らない。 */
+  fields(): Promise<Result<ManifestField[]>>;
   coverage(schemaName: string): Promise<Result<ManifestCoverage[]>>;
   functions(schemaName: string): Promise<Result<ManifestFunction[]>>;
   diagnose(schemaName: string): Promise<Result<ManifestDiagnostic[]>>;
@@ -18,6 +21,10 @@ export interface IManifestRepository {
 }
 
 export class ManifestRepository implements IManifestRepository {
+  async fields(): Promise<Result<ManifestField[]>> {
+    return call<ManifestField[]>('manifest_fields', {});
+  }
+
   async coverage(schemaName: string): Promise<Result<ManifestCoverage[]>> {
     return call<ManifestCoverage[]>('manifest_coverage', { schemaName });
   }

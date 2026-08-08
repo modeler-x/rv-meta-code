@@ -10,6 +10,8 @@
   import { RowSelection } from '@/shared/selection/RowSelection.svelte';
   import type { ManifestViewModel } from '@/modules/manifest/viewmodels/ManifestViewModel.svelte';
   import { diagnosticsOf } from '@/modules/manifest/services/ManifestService';
+  import { shortKey } from '@/modules/manifest/services/EffectiveField';
+  import BulkFieldDialog from '@/shared/components/BulkFieldDialog.svelte';
   import { PROFILE_NAMES, type ProfileName } from '@/modules/manifest/types/Manifest';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
 
@@ -36,43 +38,38 @@
     onOpenHelp?: (page: string) => void;
   } = $props();
 
-  let query = $state('');
+  // 前の工程から渡されたスキーマを検索語として置く。固定ではないので外せば全件に戻る。
+  let query = $state(untrack(() => initialSchema ?? ''));
   // 初期値としてだけ受け取る。以降はこの画面の操作で変わるので、props へは追従させない。
   let profile = $state<ProfileName>(untrack(() => initialProfile));
   let openedKey = $state<string | null>(untrack(() => initialFunctionKey));
+  let bulkOpen = $state(false);
   const selection = new RowSelection<string>();
 
-  const schemaName = $derived(viewModel.state.schemaName ?? initialSchema ?? schemas[0]?.name ?? '');
-
   /**
-   * 行はカタログの公開関数。宣言があるものだけに絞らないのは、
+   * 行は全スキーマの公開関数。宣言があるものだけに絞らないのは、
    * 「公開し忘れ」を一覧の中で見つけられるようにするため。
+   * スキーマの絞り込みは検索窓で行う（ドロップダウンで 1 つに固定しない）。
    */
   const rows = $derived.by(() => {
-    const all = viewModel.state.functions.map((fn) => {
-      const operation = viewModel.operationOf(fn.functionKey);
-      const routes = operation?.publicRoutes ?? [];
-      return {
-        functionKey: fn.functionKey,
-        state: viewModel.stateOf(fn.functionKey),
-        declared: operation != null,
-        routeCount: routes.length,
-        // 説明は宣言が原本だが、無ければ関数の COMMENT を出す。空欄を並べても読めない。
-        description: operation?.description ?? fn.comment ?? '',
-        errorCount: diagnosticsOf(viewModel.state.diagnostics, fn.functionKey).filter(
-          (d) => d.severity === 'error'
-        ).length
-      };
-    });
-    // bff では公開の判断が済んでいるもの（宣言済み）だけを扱う。
-    const scoped = profile === 'bff' ? all.filter((row) => row.declared) : all;
+    const scoped =
+      profile === 'bff' ? viewModel.state.catalog.filter((row) => row.declared) : viewModel.state.catalog;
     const needle = query.trim().toLowerCase();
     if (needle.length === 0) return scoped;
     return scoped.filter((row) =>
-      `${row.functionKey} ${row.description}`.toLowerCase().includes(needle)
+      `${row.schemaName} ${row.functionKey} ${row.operationId ?? ''} ${row.description}`
+        .toLowerCase()
+        .includes(needle)
     );
   });
+
   const rowKeys = $derived(rows.map((row) => row.functionKey));
+
+  /** 編集は 1 スキーマずつ。行を開くときに、そのスキーマへ切り替える。 */
+  async function openRow(row: { schemaName: string; functionKey: string }): Promise<void> {
+    if (viewModel.state.schemaName !== row.schemaName) await viewModel.load(row.schemaName);
+    openedKey = row.functionKey;
+  }
 
   const profileOptions = $derived(
     PROFILE_NAMES.map((name) => ({ label: name, value: name }))
@@ -123,12 +120,17 @@
               data: { 'data-state': row.state }
             }
           ];
-    if (row.errorCount > 0) {
+    // 診断は開いているスキーマの分だけ持つ。他スキーマの行では出さない。
+    const errors =
+      viewModel.state.schemaName === row.schemaName
+        ? diagnosticsOf(viewModel.state.diagnostics, row.functionKey).filter((d) => d.severity === 'error').length
+        : 0;
+    if (errors > 0) {
       badges.push({
         testid: 'operation-error-count',
-        label: `error ${row.errorCount}`,
+        label: `error ${errors}`,
         tone: 'danger',
-        data: { 'data-count': String(row.errorCount) }
+        data: { 'data-count': String(errors) }
       });
     }
     return badges;
@@ -146,17 +148,6 @@
 {/if}
 
 <div class="mb-3 flex flex-wrap items-center gap-3">
-  <label class="flex items-center gap-2">
-    <span class="text-xs text-[color:var(--rvc-muted)]">{$t('sec_schemas')}</span>
-    <select
-      data-testid="schema-filter"
-      class="rounded-md border border-[color:var(--rvc-border)] bg-[color:var(--rvc-bg)] px-2 py-1 font-mono text-xs"
-      value={schemaName}
-      onchange={(event) => switchSchema(event.currentTarget.value)}
-    >
-      {#each schemas as schema}<option value={schema.name}>{schema.name}</option>{/each}
-    </select>
-  </label>
   <div class="w-56">
     <SegmentedControl
       options={profileOptions}
@@ -167,6 +158,12 @@
   <span data-testid="profile-hint" data-profile={profile} class="min-w-0 flex-1 text-[11px] text-[color:var(--rvc-muted)]">
     {$t(profile === 'bff' ? 'mf_profile_bff_hint' : 'mf_profile_postgrest_hint')}
   </span>
+  <button
+    data-testid="save-manifest"
+    class="rounded-md border border-[color:var(--rvc-border)] px-3 py-1.5 text-xs disabled:opacity-40"
+    disabled={!viewModel.isDirty || viewModel.state.isSaving}
+    onclick={() => viewModel.save()}
+  >{$t('mf_save')}</button>
 </div>
 
 <SearchBox bind:value={query} placeholder={$t('search_placeholder')} />
@@ -177,6 +174,11 @@
   selectedCount={selected().length}
   onToggleAll={(on) => selection.setAll(rowKeys, on)}
 >
+  <button
+    data-testid="bulk-set-field"
+    class="rounded-md border border-[color:var(--rvc-border)] px-3 py-1.5 text-xs"
+    onclick={() => (bulkOpen = true)}
+  >{$t('mf_bulk_set')}</button>
   {#if profile === 'bff'}
     <button
       data-testid="bulk-publish"
@@ -200,12 +202,6 @@
       onclick={undeclareSelected}
     >{$t('mf_undeclare')}</button>
   {/if}
-  <button
-    data-testid="save-manifest"
-    class="rounded-md border border-[color:var(--rvc-border)] px-3 py-1.5 text-xs disabled:opacity-40"
-    disabled={!viewModel.isDirty || viewModel.state.isSaving}
-    onclick={() => viewModel.save()}
-  >{$t('mf_save')}</button>
 </SelectionToolbar>
 
 {#if viewModel.state.errorMessage}
@@ -225,21 +221,22 @@
       testid="operation-row"
       data={{
         'data-operation': row.functionKey,
+        'data-schema': row.schemaName,
         'data-declared': String(row.declared),
         'data-routes': String(row.routeCount)
       }}
       icon={{ label: 'O', color: '#0090a8' }}
-      title={row.functionKey}
-      subtitle={row.description}
+      title={shortKey(row.functionKey)}
+      subtitle={`${row.schemaName} · ${row.operationId ? `operationId: ${row.operationId} · ` : ''}${row.description}`}
       {query}
       badges={badgesOf(row)}
       selected={selection.isSelected(row.functionKey)}
       onToggle={() => selection.toggle(row.functionKey)}
-      onOpen={() => (openedKey = row.functionKey)}
+      onOpen={() => openRow(row)}
       action={{
         testid: 'edit-operation',
         label: $t('edit'),
-        onClick: () => (openedKey = row.functionKey),
+        onClick: () => openRow(row),
         data: { 'data-operation': row.functionKey }
       }}
     />
@@ -248,6 +245,15 @@
     <div class="px-4 py-6 text-sm text-[color:var(--rvc-muted)]">{$t('mf_no_operations')}</div>
   {/if}
 </SectionList>
+
+{#if bulkOpen}
+  <BulkFieldDialog
+    {viewModel}
+    {profile}
+    functionKeys={selected()}
+    onClose={() => (bulkOpen = false)}
+  />
+{/if}
 
 {#if openedKey}
   <ManifestOperationDrawer

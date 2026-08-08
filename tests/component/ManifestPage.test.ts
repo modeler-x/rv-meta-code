@@ -1,4 +1,4 @@
-import { render, cleanup } from '@testing-library/svelte';
+import { render, fireEvent, cleanup } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import { describe, it, expect, afterEach } from 'vitest';
 import ManifestPage from '@/pages/ManifestPage.svelte';
@@ -20,7 +20,9 @@ import {
   operationWithMostRoutes,
   routeCount,
   schemaNames,
-  schemaWithMostRoutes
+  schemaWithMostRoutes,
+  schemaWithUndeclared,
+  undeclaredFunction
 } from '../fixtures';
 
 /**
@@ -72,11 +74,7 @@ describe('スキーマ一覧', () => {
     await manifestViewModel.loadOverviews(schemaList());
 
     const { container } = render(SchemaPage, {
-      props: {
-        viewModel: schemaViewModel,
-        generationViewModel: new GenerationViewModel(new GenerationService()),
-        manifestViewModel
-      }
+      props: { viewModel: schemaViewModel, manifestViewModel }
     });
     await tick();
 
@@ -93,7 +91,13 @@ describe('マニフェスト一覧', () => {
   async function mount() {
     const viewModel = new ManifestViewModel(new ManifestService(new FakeManifestRepository()));
     await viewModel.loadOverviews(schemaList());
-    const { container } = render(ManifestPage, { props: { viewModel, onOpenOperations: () => {} } });
+    const { container } = render(ManifestPage, {
+      props: {
+        viewModel,
+        generationViewModel: new GenerationViewModel(new GenerationService()),
+        onOpenOperations: () => {}
+      }
+    });
     await tick();
     return { container, viewModel };
   }
@@ -123,6 +127,8 @@ describe('オペレーション一覧', () => {
   async function mount(schemaName = SCHEMA) {
     const viewModel = new ManifestViewModel(new ManifestService(new FakeManifestRepository()));
     await viewModel.load(schemaName);
+    // 一覧は全スキーマ横断。編集は開いた行のスキーマへ切り替える。
+    await viewModel.loadCatalog([schemaName]);
     const { container } = render(ManifestOperationPage, {
       props: { viewModel, schemas: schemaList(), initialSchema: schemaName }
     });
@@ -154,20 +160,44 @@ describe('オペレーション一覧', () => {
     expect(row.textContent).toContain(expected.slice(0, 20));
   });
 
-  it('編集する項目は宣言の並びどおりに出る', async () => {
-    // 何を編集できるかがページの責務。入力欄の描き方は Field が持つ。
+  it('編集画面には宣言できる項目がすべて並び、由来が付く', async () => {
+    // 画面は rv_meta.manifest_fields() を描くだけ。項目の一覧を自分で持たない。
     const { container } = await mount();
     only(container, 'edit-operation', `[data-operation="${TARGET.key}"]`).click();
     await tick();
 
     const drawer = only(container, 'operation-drawer');
-    expect(testids(drawer, 'operation-field').map((el) => el.dataset.field)).toEqual([
-      'operationId',
-      'operationGroup',
-      'tags',
-      'security',
-      // description は関数 COMMENT を取り込むボタンを持つので、宣言配列ではなく個別に置く。
-      'description'
-    ]);
+    // 既定は「触った項目だけ」。全項目へ切り替えると定義の数だけ並ぶ。
+    await fireEvent.click(only(drawer, 'show-all'));
+    await tick();
+
+    const expected = fixture.fields.filter((f) => f.level === 'operation').map((f) => f.field);
+    const table = only(drawer, 'operation-fields');
+    expect(testids(table, 'field-row').map((el) => el.dataset.field)).toEqual(expected);
+    // 由来はすべての行に付く。どこから来た値なのかが分からないと直せない。
+    expect(testids(table, 'field-source').every((el) => (el.dataset.source ?? '').length > 0)).toBe(true);
+  });
+
+  it('宣言が無い関数でも全項目が埋まる（人の入力 0 で宣言できる）', async () => {
+    const schema = schemaWithUndeclared();
+    if (!schema) return;
+    const fn = undeclaredFunction(schema)!;
+    const { container } = await mount(schema);
+
+    only(container, 'edit-operation', `[data-operation="${fn.functionKey}"]`).click();
+    await tick();
+    const drawer = only(container, 'operation-drawer');
+    await fireEvent.click(only(drawer, 'show-all'));
+    await tick();
+
+    // 未設定のまま残るのは任意の項目だけ。必須が空なら compile が止まるので、
+    // 「そのまま宣言できる」が成り立たない。
+    const unset = testids(drawer, 'field-row', '[data-source="none"]').map((el) => el.dataset.field);
+    const required = fixture.fields
+      .filter((f) => f.level === 'operation' && f.isRequired)
+      .map((f) => f.field);
+    expect(unset.filter((field) => required.includes(field ?? ''))).toEqual([]);
+    // 公開は業務判断なので、publicRoutes は未設定のままにする。
+    expect(unset).toContain('publicRoutes');
   });
 });

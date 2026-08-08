@@ -7,6 +7,7 @@
   import ManifestDrawer from '@/shared/components/ManifestDrawer.svelte';
   import { RowSelection } from '@/shared/selection/RowSelection.svelte';
   import type { ManifestViewModel } from '@/modules/manifest/viewmodels/ManifestViewModel.svelte';
+  import type { GenerationViewModel } from '@/modules/generation/viewmodels/GenerationViewModel.svelte';
   import type { ManifestOverview } from '@/modules/manifest/types/Manifest';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
 
@@ -14,10 +15,12 @@
   // 中身（operation ごとの宣言）はオペレーションのページが持つ。
   let {
     viewModel,
+    generationViewModel,
     onOpenOperations,
     onOpenHelp
   }: {
     viewModel: ManifestViewModel;
+    generationViewModel: GenerationViewModel;
     onOpenOperations: (schemaName: string, functionKey?: string) => void;
     onOpenHelp?: (page: string) => void;
   } = $props();
@@ -34,6 +37,22 @@
     );
   });
   const filteredNames = $derived(filtered.map((row) => row.schemaName));
+
+  /**
+   * 選んだスキーマの OpenAPI を生成する。
+   *
+   * 生成できるのは manifest がある行だけ。compile は manifest_missing で止まるので、
+   * 押してからエラーで気づくのではなく、押せない形にする。
+   */
+  const selectedRows = $derived(filtered.filter((row) => selection.isSelected(row.schemaName)));
+  const canGenerate = $derived(selectedRows.length > 0 && selectedRows.every((row) => row.hasManifest));
+
+  function generateSelected(): void {
+    generationViewModel.askGeneration(
+      selectedRows.map((row) => ({ name: row.schemaName, comment: row.comment, tableCount: 0, viewCount: 0 }))
+    );
+  }
+
 
   /** 選択したスキーマの骨子をまとめて起こす。初版かどうかは区別しない。 */
   async function draftSelected(): Promise<void> {
@@ -96,11 +115,15 @@
   selectedCount={selection.selectedWithin(filteredNames).length}
   onToggleAll={(on) => selection.setAll(filteredNames, on)}
 >
+  {#if !canGenerate}
+    <span data-testid="generate-blocked" class="text-[11px]" style="color:var(--rvc-warning)">{$t('mf_need_manifest')}</span>
+  {/if}
   <button
-    data-testid="draft-manifest"
-    class="rounded-md bg-[color:var(--rvc-accent)] px-3 py-1.5 text-xs font-semibold text-white"
-    onclick={draftSelected}
-  >{$t('mf_draft')}</button>
+    data-testid="generate-openapi"
+    class="rounded-md bg-[color:var(--rvc-accent)] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+    disabled={!canGenerate}
+    onclick={generateSelected}
+  >{$t('mf_generate_openapi')}</button>
 </SelectionToolbar>
 
 {#if viewModel.state.errorMessage}
@@ -129,7 +152,7 @@
       selected={selection.isSelected(row.schemaName)}
       onToggle={() => selection.toggle(row.schemaName)}
       onOpen={() => openDrawer(row.schemaName)}
-      action={{ testid: 'open-operations', label: $t('mf_open_operations'), onClick: () => onOpenOperations(row.schemaName) }}
+      action={{ testid: 'open-operations', label: $t('open'), onClick: () => onOpenOperations(row.schemaName) }}
     />
   {/each}
   {#if filtered.length === 0}

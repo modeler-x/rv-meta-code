@@ -82,9 +82,12 @@
       void manifestViewModel.loadOverviews(schemaList());
     }
     if (name === 'manifestOperations') {
-      // 開いているスキーマを引き継ぐ。無ければ先頭。どのスキーマの話かが決まらないと編集できない。
-      const target = manifestViewModel.state.schemaName ?? schemaViewModel.state.schemas[0]?.name;
-      if (target) void manifestViewModel.load(target);
+      // 一覧は全スキーマ横断。編集は行を開いたときにそのスキーマへ切り替える。
+      void manifestViewModel
+        .loadOverviews(schemaList())
+        .then(() => manifestViewModel.loadCatalog(
+          manifestViewModel.state.overviews.filter((row) => row.hasManifest).map((row) => row.schemaName)
+        ));
     }
     if (name === 'documents') void documentViewModel.loadDocuments();
     if (name === 'entities') void entityViewModel.loadEntities();
@@ -162,7 +165,11 @@
   /** マニフェストからオペレーションへ。診断から飛んだ場合は関数を初期フィルターにする。 */
   function openOperations(schemaName: string, functionKey?: string): void {
     route = { name: 'manifestOperations', schemaName, functionKey, backRoute: { name: 'manifest' } };
-    void manifestViewModel.load(schemaName);
+    void manifestViewModel.load(schemaName).then(() =>
+      manifestViewModel.loadCatalog(
+        manifestViewModel.state.overviews.filter((row) => row.hasManifest).map((row) => row.schemaName)
+      )
+    );
   }
 
   function openHelp(helpPage: string): void {
@@ -188,7 +195,7 @@
         {#if route.name === 'welcome'}
           <WelcomePage onNavigate={navigate} />
         {:else if route.name === 'schema'}
-          <SchemaPage viewModel={schemaViewModel} generationViewModel={generationViewModel} manifestViewModel={manifestViewModel} onOpenManifest={openManifest} />
+          <SchemaPage viewModel={schemaViewModel} manifestViewModel={manifestViewModel} onOpenManifest={openManifest} onDrafted={() => openManifest('')} />
         {:else if route.name === 'documents'}
           <DocumentListPage viewModel={documentViewModel} onOpenDocument={openDocument} />
         {:else if route.name === 'documentDetail' && selectedDocument}
@@ -206,7 +213,7 @@
         {:else if route.name === 'functions'}
           <FunctionListPage viewModel={operationGroupViewModel} onOpenGroup={(schemaName, groupKey) => openOperationGroup(schemaName, groupKey, { name: 'functions' })} />
         {:else if route.name === 'manifest'}
-          <ManifestPage viewModel={manifestViewModel} onOpenOperations={openOperations} onOpenHelp={openHelp} />
+          <ManifestPage viewModel={manifestViewModel} generationViewModel={generationViewModel} onOpenOperations={openOperations} onOpenHelp={openHelp} />
         {:else if route.name === 'manifestOperations'}
           <ManifestOperationPage
             viewModel={manifestViewModel}

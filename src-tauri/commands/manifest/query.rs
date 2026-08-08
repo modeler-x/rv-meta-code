@@ -2,7 +2,7 @@ use tauri::AppHandle;
 
 use crate::commands::metadata::build_service;
 use crate::dto::metadata_dto::{
-    ManifestCoverageDto, ManifestDiagnosticDto, ManifestDto, ManifestFunctionDto,
+    ManifestCoverageDto, ManifestDiagnosticDto, ManifestDto, ManifestFieldDto, ManifestFunctionDto,
 };
 use crate::errors::app_error::AppError;
 
@@ -50,4 +50,12 @@ pub async fn manifest_functions(
 ) -> Result<Vec<ManifestFunctionDto>, AppError> {
     let schema = require_schema(&schema_name)?;
     build_service(&app)?.manifest_functions(schema).await
+}
+
+/// 宣言できる項目の定義。スキーマに依存しないので引数を取らない。
+///
+/// 画面はこれを描き、項目一覧を持たない。持つと DB が読むキーが増えたときに漏れる。
+#[tauri::command]
+pub async fn manifest_fields(app: AppHandle) -> Result<Vec<ManifestFieldDto>, AppError> {
+    build_service(&app)?.manifest_fields().await
 }

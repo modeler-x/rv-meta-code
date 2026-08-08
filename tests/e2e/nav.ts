@@ -15,10 +15,15 @@ export async function openManifestDrawer(page: Page, schema: string): Promise<vo
   await expect(page.locator(`[data-testid="manifest-drawer"][data-schema="${schema}"]`)).toBeVisible();
 }
 
-/** オペレーション一覧をそのスキーマで開く。 */
+/**
+ * オペレーション一覧をそのスキーマで開く。
+ * スキーマの選択はドロップダウンではなく検索語。マニフェストからの遷移も同じ形で渡す。
+ */
 export async function openOperations(page: Page, schema: string): Promise<void> {
-  await gotoPage(page, 'manifestOperations');
-  await page.locator('[data-testid="schema-filter"]').selectOption(schema);
+  await gotoPage(page, 'manifest');
+  await page
+    .locator(`[data-testid="manifest-row"][data-schema="${schema}"] [data-testid="open-operations"]`)
+    .click();
   await expect(page.locator('[data-testid="operation-row"]').first()).toBeVisible();
 }
 

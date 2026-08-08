@@ -6,7 +6,7 @@ use std::collections::HashSet;
 
 use crate::dto::metadata_dto::{
     ComponentSummaryDto, DocumentDetailDto, DocumentDto, EntityDetailDto, EntitySummaryDto, FieldDto,
-    ManifestCoverageDto, ManifestDiagnosticDto, ManifestDto, ManifestFunctionDto,
+    ManifestCoverageDto, ManifestDiagnosticDto, ManifestDto, ManifestFieldDto, ManifestFunctionDto,
     OpenApiProfileDto, OpenApiSpecDto, OperationDto,
     RelationDto, RouteConflictDto, SchemaSummaryDto,
 };
@@ -562,6 +562,31 @@ impl MetadataRepository {
             .map(|row| ManifestCoverageDto {
                 function_key: row.get(0),
                 state: row.get(1),
+            })
+            .collect())
+    }
+
+    /// 宣言できる項目の定義。画面はこれを描く。
+    pub async fn manifest_fields(&self) -> Result<Vec<ManifestFieldDto>, AppError> {
+        let client = pg::connect(&self.target).await?;
+        let rows = client
+            .query(
+                "SELECT level, field, kind, options, is_required, inherits, derived_from, note
+                 FROM rv_meta.manifest_fields()",
+                &[],
+            )
+            .await?;
+        Ok(rows
+            .iter()
+            .map(|row| ManifestFieldDto {
+                level: row.get(0),
+                field: row.get(1),
+                kind: row.get(2),
+                options: row.get(3),
+                is_required: row.get(4),
+                inherits: row.get(5),
+                derived_from: row.get(6),
+                note: row.get(7),
             })
             .collect())
     }

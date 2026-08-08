@@ -63,6 +63,17 @@ export type OpenApiDocument = {
   updatedAt: string;
 };
 
+export type ManifestFieldRow = {
+  level: string;
+  field: string;
+  kind: string;
+  options: string[] | null;
+  isRequired: boolean;
+  inherits: string[];
+  derivedFrom: string | null;
+  note: string | null;
+};
+
 export type Fixture = {
   list_schemas: {
     schemaName: string;
@@ -76,6 +87,8 @@ export type Fixture = {
   diagnostics: Record<string, Diagnostic[]>;
   profiles: Record<string, OpenApiProfile[]>;
   documents: OpenApiDocument[];
+  /** 宣言できる項目の定義。画面はこれを描く。 */
+  fields: ManifestFieldRow[];
 };
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -98,9 +111,16 @@ export function schemaWithMostRoutes(): string {
   return [...schemaNames].sort((a, b) => totalRoutes(b) - totalRoutes(a))[0];
 }
 
-/** ルートを 1 本も持たないスキーマ。公開前の状態を確かめるのに使う。 */
+/**
+ * 宣言はあるが公開ルートを 1 本も持たないスキーマ。
+ * 「公開前 → 公開後」の変化を確かめるので、宣言が 0 件のスキーマでは意味がない。
+ */
 export function schemaWithoutRoutes(): string | null {
-  return schemaNames.find((name) => totalRoutes(name) === 0) ?? null;
+  return (
+    schemaNames.find(
+      (name) => totalRoutes(name) === 0 && Object.keys(fixture.manifests[name].operations).length > 0
+    ) ?? null
+  );
 }
 
 /** そのスキーマで最も多くの外部ルートへ展開される operation。 */

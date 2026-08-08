@@ -26,6 +26,11 @@ SELECT jsonb_pretty(jsonb_build_object(
                            'functionKey', function_key, 'state', state,
                            'comment', comment_body, 'arguments', arguments)) AS rows
                          FROM rv_meta.manifest_functions(s.schema_name)) f ON true),
+  'fields', (SELECT jsonb_agg(jsonb_build_object(
+      'level', level, 'field', field, 'kind', kind, 'options', options,
+      'isRequired', is_required, 'inherits', inherits,
+      'derivedFrom', derived_from, 'note', note) ORDER BY level, field)
+      FROM rv_meta.manifest_fields()),
   'profiles', (SELECT jsonb_object_agg(s.schema_name, COALESCE(pr.rows, '[]'::jsonb)) FROM s
       LEFT JOIN LATERAL (SELECT jsonb_agg(jsonb_build_object(
                            'schemaName', s.schema_name, 'profile', profile,

@@ -4,15 +4,19 @@
   import { translate as t } from '@/shared/i18n/i18n.svelte';
   export let route: AppRoute;
   export let onNavigate: (name: AppRouteName) => void;
+  /**
+   * 成果物の順に並べる。スキーマ（入力）→ マニフェスト → ドキュメント → SDK。
+   * オペレーションは工程ではなくマニフェストの中身なので、字下げして番号を振らない。
+   */
   const items = [
-    { name: 'welcome', key: 'nav_welcome', icon: Home },
-    { name: 'schema', key: 'nav_schemas', icon: Database },
-    { name: 'manifest', key: 'nav_manifest', icon: FileText },
-    { name: 'manifestOperations', key: 'nav_operations', icon: SlidersHorizontal },
-    { name: 'documents', key: 'nav_documents', icon: FileText },
-    { name: 'entities', key: 'nav_entities', icon: Table2 },
-    { name: 'functions', key: 'nav_functions', icon: Workflow },
-    { name: 'recent', key: 'nav_recent', icon: History }
+    { name: 'welcome', key: 'nav_welcome', icon: Home, step: null, sub: false },
+    { name: 'schema', key: 'nav_schemas', icon: Database, step: '1', sub: false },
+    { name: 'manifest', key: 'nav_manifest', icon: FileText, step: '2', sub: false },
+    { name: 'manifestOperations', key: 'nav_operations', icon: SlidersHorizontal, step: null, sub: true },
+    { name: 'documents', key: 'nav_documents', icon: FileText, step: '3', sub: false },
+    { name: 'entities', key: 'nav_entities', icon: Table2, step: null, sub: false },
+    { name: 'functions', key: 'nav_functions', icon: Workflow, step: null, sub: false },
+    { name: 'recent', key: 'nav_recent', icon: History, step: null, sub: false }
   ] as const;
 </script>
 
@@ -24,8 +28,13 @@
   <nav class="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-2">
     {#each items as item}
       {@const isActive = route.name === item.name || (item.name === 'entities' && route.name === 'entityDetail') || (item.name === 'functions' && (route.name === 'operationGroupDetail' || route.name === 'functionOperationDetail'))}
-      <button data-testid="nav" data-nav={item.name} class={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm ${isActive ? 'bg-[color:var(--rvc-accent)] text-white' : ''}`} on:click={() => onNavigate(item.name)}>
-        <svelte:component this={item.icon} size={16} /> {$t(item.key)}
+      <button data-testid="nav" data-nav={item.name} data-step={item.step} class={`flex w-full items-center gap-2 rounded-md py-1.5 text-left text-sm ${item.sub ? 'pl-7 pr-2' : 'px-2'} ${isActive ? 'bg-[color:var(--rvc-accent)] text-white' : ''}`} on:click={() => onNavigate(item.name)}>
+        {#if item.step}
+          <span class={`flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-full border text-[9.5px] font-bold ${isActive ? 'border-white/60' : 'border-[color:var(--rvc-border)] text-[color:var(--rvc-muted)]'}`}>{item.step}</span>
+        {:else}
+          <svelte:component this={item.icon} size={16} />
+        {/if}
+        {$t(item.key)}
       </button>
     {/each}
   </nav>

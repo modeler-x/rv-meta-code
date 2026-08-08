@@ -3,8 +3,8 @@
   import DiagnosticList from '@/shared/components/DiagnosticList.svelte';
   import StatusBadge from '@/shared/components/StatusBadge.svelte';
   import SegmentedControl from '@/shared/components/SegmentedControl.svelte';
-  import FieldGrid from '@/shared/components/FieldGrid.svelte';
-  import type { FieldSpec } from '@/shared/components/Field.svelte';
+  import EffectiveFieldTable, { type OverrideRequest } from '@/shared/components/EffectiveFieldTable.svelte';
+  import type { ManifestField } from '@/modules/manifest/types/ManifestField';
   import type { ManifestViewModel } from '@/modules/manifest/viewmodels/ManifestViewModel.svelte';
   import {
     GENERATION_MODES,
@@ -41,67 +41,12 @@
     { label: $t('mf_sec_defaults'), value: 'defaults' }
   ]);
 
-  const defaults = $derived(viewModel.state.draft?.defaults ?? {});
-  const tagsText = $derived((defaults.tags ?? []).join(', '));
-
-  /** profile 1 件分の項目。並びも既定も 1 箇所で決める。 */
-  function profileFields(profile: ProfileName): FieldSpec[] {
-    const value = viewModel.profileOf(profile) ?? {};
-    const inferred = $t('mf_inferred');
-    return [
-      { name: 'basePath', kind: 'text', value: value.basePath ?? '', placeholder: schemaName },
-      { name: 'title', kind: 'text', value: value.title ?? '', placeholder: inferred, mono: false },
-      { name: 'version', kind: 'text', value: value.version ?? '', placeholder: inferred },
-      {
-        name: 'generationMode',
-        kind: 'select',
-        value: value.generationMode ?? '',
-        options: [{ value: '', label: inferred }, ...GENERATION_MODES.map((m) => ({ value: m, label: m }))]
-      },
-      {
-        name: 'operationIdStyle',
-        kind: 'select',
-        value: value.operationIdStyle ?? '',
-        options: [{ value: '', label: inferred }, ...OPERATION_ID_STYLES.map((m) => ({ value: m, label: m }))]
-      },
-      {
-        name: 'stripPrefixArg',
-        kind: 'text',
-        label: 'naming.stripPrefix.arg',
-        value: value.naming?.stripPrefix?.arg ?? '',
-        placeholder: profile === 'bff' ? 'p_' : ''
-      }
-    ];
+  function override(profile: ProfileName, request: OverrideRequest): void {
+    // profiles / defaults の項目は、その階層自身へ書く。範囲を選ばせる必要がない。
+    viewModel.override(request.field, request.value, 'own', profile, null);
   }
-
-  function setProfileField(profile: ProfileName, name: string, value: string): void {
-    if (name === 'stripPrefixArg') viewModel.setStripPrefixArg(profile, value);
-    else viewModel.setProfileField(profile, name as keyof ManifestProfile, value);
-  }
-
-  /** defaults は全 operation へマージされる。security は二択に畳んで JSON を書かせない。 */
-  const defaultFields = $derived<FieldSpec[]>([
-    { name: 'operationGroup', kind: 'text', value: defaults.operationGroup ?? '', mono: false },
-    { name: 'tags', kind: 'text', value: tagsText, placeholder: $t('mf_tags_placeholder'), mono: false },
-    {
-      name: 'security',
-      kind: 'select',
-      value: defaults.security ? (defaults.security.length === 0 ? 'public' : 'bearer') : '',
-      options: [
-        { value: '', label: $t('mf_security_unset') },
-        { value: 'bearer', label: $t('mf_security_bearer') },
-        { value: 'public', label: $t('mf_security_public') }
-      ]
-    }
-  ]);
-
-  function setDefaultField(name: string, value: string): void {
-    if (name === 'tags') return setTags(value);
-    if (name === 'security') {
-      viewModel.setDefault('security', value === 'public' ? [] : value === 'bearer' ? [{ bearerAuth: [] }] : undefined);
-      return;
-    }
-    viewModel.setDefault(name as 'operationGroup', value);
+  function clear(profile: ProfileName, field: ManifestField): void {
+    viewModel.clearOverride(field, profile, null);
   }
 
   function toggleProfile(profile: ProfileName, on: boolean): void {
@@ -155,22 +100,25 @@
 
           {#if value}
             <div class="mt-3">
-              <FieldGrid
-                fields={profileFields(profile)}
-                testid="profile-field"
+              <EffectiveFieldTable
+                testid="profile-fields"
                 data={{ 'data-profile': profile }}
-                onInput={(name, next) => setProfileField(profile, name, next)}
+                rows={viewModel.profileFields(profile)}
+                onOverride={(request) => override(profile, request)}
+                onClear={(field) => clear(profile, field)}
               />
             </div>
-            {#if profile === 'postgrest'}
-              <p class="mt-2 text-[11px] text-[color:var(--rvc-muted)]">{$t('mf_strip_prefix_warning')}</p>
-            {/if}
           {/if}
         </div>
       {/each}
     </div>
   {:else}
-    <FieldGrid fields={defaultFields} columns={3} testid="defaults-field" onInput={setDefaultField} />
+    <EffectiveFieldTable
+      testid="defaults-fields"
+      rows={viewModel.defaultsFields('postgrest')}
+      onOverride={(request) => override('postgrest', request)}
+      onClear={(field) => clear('postgrest', field)}
+    />
     <p class="mt-3 text-[11px] text-[color:var(--rvc-muted)]">{$t('mf_defaults_hint')}</p>
   {/if}
 
