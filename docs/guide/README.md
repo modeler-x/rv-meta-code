@@ -9,14 +9,18 @@ Rv Meta Code の環境構築・実行・テスト・ビルド/デプロイ手順
 3. [テスト](./03_test.md) — 型チェック / フロントエンド単体 / バックエンド / E2E
 4. [ビルド・デプロイ](./04_build_deploy.md) — 本番ビルド / `.app`・`.dmg` 生成 / 配布
 
-## クイックスタート（ブラウザで最短確認）
-
+## クイックスタート
 ツールチェーン（Rust）不要。Node / pnpm のみで UI を確認できる。
 
 ```bash
-cd rv-meta-code
-pnpm install          # 初回のみ
-pnpm dev              # http://127.0.0.1:5173/ をブラウザで開く
+cd ~/git/modelerX/rv-meta-code
+pnpm tauri dev
+```
+
+```bash
+# (初回のみ) pnpm install
+# (ブラウザ確認用) pnpm tauri dev
+# http://127.0.0.1:5173/ をブラウザで開く
 ```
 
 ## 前提
