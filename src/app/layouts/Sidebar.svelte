@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { CircleHelp, Database, FileText, History, Home, Server, SlidersHorizontal, Table2, UserRound, Workflow } from 'lucide-svelte';
+  import { CircleHelp, Database, FileText, History, Home, Package, Server, SlidersHorizontal, Table2, UserRound, Workflow } from 'lucide-svelte';
   import type { AppRoute, AppRouteName } from '@/app/router/AppRoute';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
   export let route: AppRoute;
@@ -14,6 +14,7 @@
     { name: 'manifest', key: 'nav_manifest', icon: FileText, step: '2', sub: false },
     { name: 'manifestOperations', key: 'nav_operations', icon: SlidersHorizontal, step: null, sub: true },
     { name: 'documents', key: 'nav_documents', icon: FileText, step: '3', sub: false },
+    { name: 'sdkList', key: 'nav_sdk', icon: Package, step: '4', sub: false },
     { name: 'entities', key: 'nav_entities', icon: Table2, step: null, sub: false },
     { name: 'functions', key: 'nav_functions', icon: Workflow, step: null, sub: false },
     { name: 'recent', key: 'nav_recent', icon: History, step: null, sub: false }

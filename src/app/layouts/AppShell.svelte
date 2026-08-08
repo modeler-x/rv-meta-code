@@ -15,6 +15,7 @@
   import OperationDetailPage from '@/pages/OperationDetailPage.svelte';
   import OperationGroupDetailPage from '@/pages/OperationGroupDetailPage.svelte';
   import SdkGenerationPage from '@/pages/SdkGenerationPage.svelte';
+  import SdkListPage from '@/pages/SdkListPage.svelte';
   import ComponentsPage from '@/pages/ComponentsPage.svelte';
   import RecentPage from '@/pages/RecentPage.svelte';
   import ProfilePage from '@/pages/ProfilePage.svelte';
@@ -182,7 +183,7 @@
   const selectedGroup = $derived(operationGroupViewModel.findGroup(route.groupKey, route.schemaName));
   const selectedFunctionOperation = $derived(operationGroupViewModel.findOperation(route.operationRowId));
   const connectionLabel = $derived(currentConnection ? `${currentConnection.database} / ${currentConnection.host}` : $t('no_connection'));
-  const titleMap = $derived({ welcome: $t('title_welcome'), schema: $t('title_schemas'), manifest: $t('title_manifest'), manifestOperations: $t('title_operations'), documents: $t('title_documents'), documentDetail: selectedDocument?.title ?? $t('title_documents'), entities: $t('title_entities'), entityDetail: selectedEntity?.tableName ?? '', functions: $t('title_functions'), help: $t('title_help'), operationDetail: selectedOperation?.path ?? $t('sec_operations'), operationGroupDetail: selectedGroup?.displayName ?? $t('title_operation_group'), functionOperationDetail: selectedFunctionOperation?.path ?? $t('sec_operations'), sdkGeneration: $t('title_sdk'), components: $t('title_components'), recent: $t('title_recent'), profile: $t('title_profile'), connections: $t('title_connections'), servers: $t('title_servers') });
+  const titleMap = $derived({ welcome: $t('title_welcome'), schema: $t('title_schemas'), manifest: $t('title_manifest'), manifestOperations: $t('title_operations'), sdkList: $t('nav_sdk'), documents: $t('title_documents'), documentDetail: selectedDocument?.title ?? $t('title_documents'), entities: $t('title_entities'), entityDetail: selectedEntity?.tableName ?? '', functions: $t('title_functions'), help: $t('title_help'), operationDetail: selectedOperation?.path ?? $t('sec_operations'), operationGroupDetail: selectedGroup?.displayName ?? $t('title_operation_group'), functionOperationDetail: selectedFunctionOperation?.path ?? $t('sec_operations'), sdkGeneration: $t('title_sdk'), components: $t('title_components'), recent: $t('title_recent'), profile: $t('title_profile'), connections: $t('title_connections'), servers: $t('title_servers') });
   const title = $derived(titleMap[route.name]);
 </script>
 
@@ -200,6 +201,8 @@
           <DocumentListPage viewModel={documentViewModel} onOpenDocument={openDocument} onGenerateSdk={(schemaName, profile) => openSdkGeneration(schemaName, profile, route)} />
         {:else if route.name === 'documentDetail' && selectedDocument}
           <DocumentDetailPage document={selectedDocument} documentViewModel={documentViewModel} entityViewModel={entityViewModel} operationGroupViewModel={operationGroupViewModel} onOpenEntity={(entityId) => openEntity(entityId, route)} onOpenGroup={(groupKey) => openOperationGroup(selectedDocument.schemaName, groupKey, route)} onGenerateSdk={() => openSdkGeneration(selectedDocument.schemaName, selectedDocument.profile, route)} onOpenComponents={() => openComponents(selectedDocument.schemaName, selectedDocument.profile, route)} />
+        {:else if route.name === 'sdkList'}
+          <SdkListPage viewModel={sdkGenerationViewModel} onRegenerate={(schemaName, profile) => openSdkGeneration(schemaName, profile, route)} />
         {:else if route.name === 'sdkGeneration'}
           <SdkGenerationPage viewModel={sdkGenerationViewModel} schema={route.schemaName ?? ''} profile={route.profile ?? ''} />
         {:else if route.name === 'components'}

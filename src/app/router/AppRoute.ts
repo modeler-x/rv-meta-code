@@ -12,6 +12,7 @@ export type AppRouteName =
   | 'operationGroupDetail'
   | 'functionOperationDetail'
   | 'sdkGeneration'
+  | 'sdkList'
   | 'components'
   | 'recent'
   | 'help'

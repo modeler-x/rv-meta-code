@@ -2,6 +2,7 @@
   import SectionList from '@/shared/components/SectionList.svelte';
   import ListRow, { type RowBadge } from '@/shared/components/ListRow.svelte';
   import SearchBox from '@/shared/components/SearchBox.svelte';
+  import StageRail from '@/shared/components/StageRail.svelte';
   import SelectionToolbar from '@/shared/components/SelectionToolbar.svelte';
   import BusyOverlay from '@/shared/components/BusyOverlay.svelte';
   import ManifestDrawer from '@/shared/components/ManifestDrawer.svelte';
@@ -103,6 +104,8 @@
     openedSchema = schemaName;
   }
 </script>
+
+<StageRail current="manifest" />
 
 {#if viewModel.state.isLoading || viewModel.state.isSaving}
   <BusyOverlay />

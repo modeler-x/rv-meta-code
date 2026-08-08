@@ -48,6 +48,29 @@
   let draftValue = $state('');
   let draftScope = $state<OverrideScope>('own');
 
+  // responses は「status と参照先」の組を足していく形にする。生の JSON を書かせない。
+  const RESPONSE_STATUSES = [
+    { code: '422', key: 'mf_res_422' as MessageKey },
+    { code: '404', key: 'mf_res_404' as MessageKey },
+    { code: '409', key: 'mf_res_409' as MessageKey },
+    { code: '500', key: 'mf_res_500' as MessageKey }
+  ];
+  const responseRefs = [
+    { value: 'components', label: 'components/responses の既定' },
+    { value: 'Error', label: 'Error スキーマを参照' },
+    { value: 'none', label: '説明だけ（本文なし）' }
+  ];
+  let responseStatus = $state('422');
+  let responseRef = $state('components');
+  let responseDraft = $state<{ status: string; ref: string }[]>([]);
+
+  function addResponse(): void {
+    if (responseDraft.some((entry) => entry.status === responseStatus)) return;
+    responseDraft = [...responseDraft, { status: responseStatus, ref: responseRef }];
+    // 上書きの値は「status:ref」の並び。宣言への変換は Service が引き受ける。
+    draftValue = responseDraft.map((entry) => `${entry.status}:${entry.ref}`).join(',');
+  }
+
   const sourceLabels: Record<FieldSource, string> = {
     own: 'own',
     profile: 'profile',
@@ -78,6 +101,7 @@
     editingField = row.definition.field;
     draftValue = row.source === 'none' ? '' : row.value;
     draftScope = 'own';
+    responseDraft = [];
   }
 
   function commit(row: EffectiveField): void {
@@ -163,13 +187,44 @@
               bind:value={draftValue}
             ></textarea>
           {:else if row.definition.kind === 'responses'}
-            <!-- status と参照先を選ぶだけにする。生の JSON は書かせない。 -->
-            <div class="flex flex-wrap items-center gap-2">
-              <select data-testid="field-input" class="rounded-md border border-[color:var(--rvc-border)] bg-[color:var(--rvc-bg)] px-2 py-1 text-xs" bind:value={draftValue}>
-                <option value="422">422 — {$t('mf_res_422')}</option>
-                <option value="404">404 — {$t('mf_res_404')}</option>
-                <option value="409">409 — {$t('mf_res_409')}</option>
-              </select>
+            <!--
+              status と参照先を選ぶだけにする。生の JSON は書かせない。
+              200 は戻り値の型から推論されるので、ここで足すのはエラー応答だけ。
+            -->
+            <div class="flex flex-col gap-2">
+              <div class="flex flex-wrap items-center gap-2">
+                <select
+                  data-testid="response-status"
+                  class="rounded-md border border-[color:var(--rvc-border)] bg-[color:var(--rvc-bg)] px-2 py-1 text-xs"
+                  bind:value={responseStatus}
+                >
+                  {#each RESPONSE_STATUSES as status}
+                    <option value={status.code}>{status.code} — {$t(status.key)}</option>
+                  {/each}
+                </select>
+                <select
+                  data-testid="response-ref"
+                  class="rounded-md border border-[color:var(--rvc-border)] bg-[color:var(--rvc-bg)] px-2 py-1 text-xs"
+                  bind:value={responseRef}
+                >
+                  {#each responseRefs as ref}<option value={ref.value}>{ref.label}</option>{/each}
+                </select>
+                <button
+                  data-testid="response-add"
+                  class="rounded-md border border-[color:var(--rvc-border)] px-2.5 py-1 text-xs"
+                  onclick={addResponse}
+                >{$t('mf_res_add')}</button>
+              </div>
+              {#if responseDraft.length > 0}
+                <div class="flex flex-wrap gap-1">
+                  {#each responseDraft as entry}
+                    <span data-testid="response-entry" data-status={entry.status} class="rounded bg-[color:var(--rvc-search)] px-2 py-0.5 font-mono text-[11px]">
+                      {entry.status} → {entry.ref}
+                    </span>
+                  {/each}
+                </div>
+              {/if}
+              <input data-testid="field-input" type="hidden" bind:value={draftValue} />
               <span class="text-[11px] text-[color:var(--rvc-muted)]">{$t('mf_responses_hint')}</span>
             </div>
           {:else}

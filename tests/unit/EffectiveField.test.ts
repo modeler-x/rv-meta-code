@@ -240,3 +240,26 @@ describe('関数キーの短縮', () => {
     }
   });
 });
+
+describe('responses の宣言', () => {
+  it('status と参照先の組を OpenAPI の形へ直す（人に $ref を書かせない）', () => {
+    const field = fieldOf('operation', 'responses');
+    const declared = toDeclared('422:components,404:Error', field) as Record<string, unknown>;
+
+    // 数字のキーは JS が昇順に並べ替える。並びではなく中身を見る。
+    expect(Object.keys(declared).sort()).toEqual(['404', '422']);
+    expect(declared['422']).toEqual({ $ref: '#/components/responses/UnprocessableEntity' });
+    expect(declared['404']).toMatchObject({
+      content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+    });
+  });
+
+  it('本文なしを選べる（説明だけの応答）', () => {
+    const field = fieldOf('operation', 'responses');
+    expect(toDeclared('500:none', field)).toEqual({ '500': { description: 'Error' } });
+  });
+
+  it('空なら未指定へ戻る（200 は戻り値の型から推論される）', () => {
+    expect(toDeclared('', fieldOf('operation', 'responses'))).toBeUndefined();
+  });
+});

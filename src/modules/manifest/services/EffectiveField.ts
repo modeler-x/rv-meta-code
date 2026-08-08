@@ -69,9 +69,39 @@ export function displayValue(value: unknown, field: ManifestField): string {
   return String(value);
 }
 
+/**
+ * responses の参照先。画面では選択肢、宣言では OpenAPI の形になる。
+ * 人に $ref を書かせないための対応表。
+ */
+const RESPONSE_REFS: Record<string, (status: string) => Record<string, unknown>> = {
+  components: (status) => ({ $ref: `#/components/responses/${RESPONSE_NAMES[status] ?? 'Error'}` }),
+  Error: () => ({
+    description: 'Error',
+    content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+  }),
+  none: () => ({ description: 'Error' })
+};
+
+const RESPONSE_NAMES: Record<string, string> = {
+  '404': 'NotFound',
+  '409': 'Conflict',
+  '422': 'UnprocessableEntity',
+  '500': 'InternalServerError'
+};
+
 /** 画面の表示（要認証 / 公開）を宣言の形へ戻す。 */
 export function toDeclared(input: string, field: ManifestField): unknown {
   if (input.trim().length === 0) return undefined;
+  if (field.kind === 'responses') {
+    // "422:components,404:Error" の形。status と参照先の組だけを受け取る。
+    const entries = input.split(',').map((part) => part.split(':'));
+    const responses: Record<string, unknown> = {};
+    for (const [status, ref] of entries) {
+      if (!status) continue;
+      responses[status] = (RESPONSE_REFS[ref ?? 'components'] ?? RESPONSE_REFS.components)(status);
+    }
+    return Object.keys(responses).length > 0 ? responses : undefined;
+  }
   if (field.field.endsWith('security')) return input === '公開' ? [] : [{ bearerAuth: [] }];
   if (field.kind === 'chips') {
     const items = input.split(',').map((s) => s.trim()).filter((s) => s.length > 0);

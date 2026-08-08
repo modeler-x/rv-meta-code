@@ -2,6 +2,7 @@
   import SectionList from '@/shared/components/SectionList.svelte';
   import ListRow from '@/shared/components/ListRow.svelte';
   import SearchBox from '@/shared/components/SearchBox.svelte';
+  import StageRail from '@/shared/components/StageRail.svelte';
   import SelectionToolbar from '@/shared/components/SelectionToolbar.svelte';
   import SpecPreviewSheet from '@/shared/components/SpecPreviewSheet.svelte';
   import BusyOverlay from '@/shared/components/BusyOverlay.svelte';
@@ -54,6 +55,8 @@
     );
   }
 </script>
+
+<StageRail current="documents" />
 
 <SearchBox bind:value={query} placeholder={$t('search_placeholder')} />
 

@@ -2,6 +2,7 @@
   import SectionList from '@/shared/components/SectionList.svelte';
   import ListRow from '@/shared/components/ListRow.svelte';
   import SearchBox from '@/shared/components/SearchBox.svelte';
+  import StageRail from '@/shared/components/StageRail.svelte';
   import SelectionToolbar from '@/shared/components/SelectionToolbar.svelte';
   import { RowSelection } from '@/shared/selection/RowSelection.svelte';
   import type { SchemaViewModel } from '@/modules/schema/viewmodels/SchemaViewModel.svelte';
@@ -53,6 +54,8 @@
     manifestViewModel.askDraft(selection.selectedWithin(filteredNames));
   }
 </script>
+
+<StageRail current="schema" />
 
 <SearchBox bind:value={query} placeholder={$t('search_placeholder')} />
 

@@ -1,3 +1,4 @@
+import { SdkHistory, type ISdkHistory, type SdkRecord } from '@/modules/sdk/services/SdkHistory';
 import type { SdkGenerationService } from '@/modules/sdk/services/SdkGenerationService';
 import type {
   GenerateSdkResult,
@@ -62,7 +63,10 @@ export class SdkGenerationViewModel {
   // フォルダー選択ダイアログの失敗理由（無反応に見えないよう UI へ表示する）。
   pickError: string | null = $state(null);
 
-  constructor(private readonly sdkGenerationService: SdkGenerationService) {}
+  constructor(
+    private readonly sdkGenerationService: SdkGenerationService,
+    private readonly history: ISdkHistory = new SdkHistory()
+  ) {}
 
   /** 現在選択中の Adapter 記述子。 */
   get selectedGenerator(): GeneratorDescriptor | undefined {
@@ -217,7 +221,27 @@ export class SdkGenerationViewModel {
       this.report = outcome.data.report;
       this.result = outcome.data.result;
       this.phase = 'done';
+      // 成果物として一覧に出せるよう、由来（スキーマと契約面）ごと記録する。
+      // 同じスキーマでも契約面が違えば別物なので、名前だけでは区別できない。
+      this.history.record({
+        packageName: this.packageName,
+        schemaName: schema,
+        profile,
+        generatorId: this.generatorId,
+        outputDirectory: outcome.data.result.outputDirectory,
+        fileCount: outcome.data.result.generatedFiles.length,
+        generatedAt: new Date().toISOString()
+      });
     }
+  }
+
+  /** 生成済み SDK の一覧。作り直しの入口になる。 */
+  listHistory(): SdkRecord[] {
+    return this.history.list();
+  }
+
+  removeHistory(packageName: string): SdkRecord[] {
+    return this.history.remove(packageName);
   }
 
   reset(): void {
