@@ -44,6 +44,8 @@
   let profile = $state<ProfileName>(untrack(() => initialProfile));
   let openedKey = $state<string | null>(untrack(() => initialFunctionKey));
   let bulkOpen = $state(false);
+  // 既定は関数だけ。CRUD は数が多く、編集の対象でもない。
+  let onlyFunctions = $state(true);
   const selection = new RowSelection<string>();
 
   /**
@@ -51,19 +53,58 @@
    * 「公開し忘れ」を一覧の中で見つけられるようにするため。
    * スキーマの絞り込みは検索窓で行う（ドロップダウンで 1 つに固定しない）。
    */
-  const rows = $derived.by(() => {
-    const scoped =
-      profile === 'bff' ? viewModel.state.catalog.filter((row) => row.declared) : viewModel.state.catalog;
+  /**
+   * 一覧の行。編集中のスキーマは、保存前の下書きを反映する。
+   * カタログの値のままだと、公開したのに候補へ残り続ける。
+   */
+  const catalog = $derived(
+    viewModel.state.catalog.map((row) => {
+      if (row.schemaName !== viewModel.state.schemaName) return row;
+      const operation = viewModel.operationOf(row.functionKey);
+      return {
+        ...row,
+        operationId: operation?.operationId ?? row.operationId,
+        declared: operation != null,
+        routeCount: operation?.publicRoutes?.length ?? 0,
+        description: operation?.description ?? row.description
+      };
+    })
+  );
+
+  const matched = $derived.by(() => {
     const needle = query.trim().toLowerCase();
-    if (needle.length === 0) return scoped;
-    return scoped.filter((row) =>
+    if (needle.length === 0) return catalog;
+    return catalog.filter((row) =>
       `${row.schemaName} ${row.functionKey} ${row.operationId ?? ''} ${row.description}`
         .toLowerCase()
         .includes(needle)
     );
   });
 
-  const rowKeys = $derived(rows.map((row) => row.functionKey));
+  /**
+   * bff に並ぶのは publicRoutes を宣言したものだけ。
+   * 公開していない宣言まで並べると、どれが外に出ているのか読めなくなる。
+   */
+  const rows = $derived(
+    profile === 'bff' ? matched.filter((row) => row.routeCount > 0) : matched
+  );
+
+  /** 公開の候補。宣言はあるが publicRoutes が無いもの。公開するかは業務判断。 */
+  const candidates = $derived(
+    profile === 'bff' ? matched.filter((row) => row.declared && row.routeCount === 0) : []
+  );
+
+  /** テーブルの CRUD。宣言が無いので編集できない。既定では隠す。 */
+  const crudRows = $derived.by(() => {
+    if (onlyFunctions || profile === 'bff') return [];
+    const needle = query.trim().toLowerCase();
+    return viewModel.state.crud.filter(
+      (row) => !needle || `${row.schemaName} ${row.tableName}`.toLowerCase().includes(needle)
+    );
+  });
+
+  // 一括操作の対象には候補も含める。公開する操作は候補に対して行うため。
+  const rowKeys = $derived([...rows, ...candidates].map((row) => row.functionKey));
 
   /** 編集は 1 スキーマずつ。行を開くときに、そのスキーマへ切り替える。 */
   async function openRow(row: { schemaName: string; functionKey: string }): Promise<void> {
@@ -215,6 +256,18 @@
   </div>
 {/if}
 
+<label class="mb-2 flex flex-wrap items-center gap-2 px-1 text-[11px] text-[color:var(--rvc-muted)]">
+  <input
+    type="checkbox"
+    data-testid="only-functions"
+    class="checkbox checkbox-sm"
+    checked={onlyFunctions}
+    onchange={() => (onlyFunctions = !onlyFunctions)}
+  />
+  <span class="text-[color:var(--rvc-text)]">{$t('mf_only_functions')}</span>
+  <span>{$t('mf_only_functions_hint')}</span>
+</label>
+
 <SectionList title={`${$t('nav_operations')} / ${rows.length}`} detail={$t('mf_operations_hint')}>
   {#each rows as row}
     <ListRow
@@ -227,7 +280,11 @@
       }}
       icon={{ label: 'O', color: '#0090a8' }}
       title={shortKey(row.functionKey)}
-      subtitle={`${row.schemaName} · ${row.operationId ? `operationId: ${row.operationId} · ` : ''}${row.description}`}
+      subtitle={row.schemaName}
+      lines={[
+        { text: row.description, mono: false },
+        { text: row.operationId ? `operationId: ${row.operationId}` : $t('mf_no_operation_id') }
+      ]}
       {query}
       badges={badgesOf(row)}
       selected={selection.isSelected(row.functionKey)}
@@ -245,6 +302,49 @@
     <div class="px-4 py-6 text-sm text-[color:var(--rvc-muted)]">{$t('mf_no_operations')}</div>
   {/if}
 </SectionList>
+
+{#if candidates.length > 0}
+  <!-- 公開していない宣言。同じ一覧に混ぜると、どれが外に出ているのか読めなくなる。 -->
+  <SectionList title={`${$t('mf_publish_candidates')} / ${candidates.length}`} detail={$t('mf_publish_candidates_hint')}>
+    {#each candidates as row}
+      <ListRow
+        testid="candidate-row"
+        data={{ 'data-operation': row.functionKey, 'data-schema': row.schemaName }}
+        icon={{ label: 'O', color: '#8a8a8f' }}
+        title={shortKey(row.functionKey)}
+        subtitle={row.schemaName}
+        lines={[{ text: row.description, mono: false }]}
+        {query}
+        badges={[{ testid: 'public-state', label: $t('mf_candidate'), tone: 'muted', data: { 'data-public': 'false' } }]}
+        selected={selection.isSelected(row.functionKey)}
+        onToggle={() => selection.toggle(row.functionKey)}
+        onOpen={() => openRow(row)}
+        action={{ testid: 'publish-operation', label: $t('mf_publish'), onClick: () => openRow(row) }}
+      />
+    {/each}
+  </SectionList>
+{/if}
+
+{#if crudRows.length > 0}
+  <!--
+    テーブルから自動生成される CRUD。manifest に宣言が無いので編集できない。
+    同じ画面に並べる以上、編集できる宣言との違いが読み取れる必要がある。
+  -->
+  <SectionList title={`${$t('mf_table_crud')} / ${crudRows.length}`} detail={$t('mf_table_crud_hint')}>
+    {#each crudRows as row}
+      <ListRow
+        testid="crud-row"
+        data={{ 'data-schema': row.schemaName, 'data-table': row.tableName }}
+        icon={{ label: 'T', color: '#8a8a8f' }}
+        title={row.tableName}
+        subtitle={row.schemaName}
+        lines={[{ text: row.operations.join(' · ') }]}
+        {query}
+        badges={[{ testid: 'crud-origin', label: $t('mf_from_catalog'), tone: 'muted' }]}
+      />
+    {/each}
+  </SectionList>
+{/if}
 
 {#if bulkOpen}
   <BulkFieldDialog

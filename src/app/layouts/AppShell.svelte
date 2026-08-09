@@ -196,7 +196,7 @@
         {#if route.name === 'welcome'}
           <WelcomePage onNavigate={navigate} />
         {:else if route.name === 'schema'}
-          <SchemaPage viewModel={schemaViewModel} manifestViewModel={manifestViewModel} onOpenManifest={openManifest} onDrafted={() => openManifest('')} />
+          <SchemaPage viewModel={schemaViewModel} manifestViewModel={manifestViewModel} onOpenOperations={(name) => openOperations(name)} onDrafted={() => navigate('manifest')} />
         {:else if route.name === 'documents'}
           <DocumentListPage viewModel={documentViewModel} onOpenDocument={openDocument} onGenerateSdk={(schemaName, profile) => openSdkGeneration(schemaName, profile, route)} />
         {:else if route.name === 'documentDetail' && selectedDocument}
@@ -223,7 +223,7 @@
             schemas={schemaList()}
             initialSchema={route.schemaName ?? null}
             initialFunctionKey={route.functionKey ?? null}
-            initialProfile={route.functionKey ? 'bff' : 'postgrest'}
+            initialProfile={'postgrest'}
             onOpenHelp={openHelp}
           />
         {:else if route.name === 'help'}

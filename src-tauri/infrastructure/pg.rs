@@ -1,6 +1,9 @@
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use tauri::async_runtime;
+use tauri::async_runtime::Mutex as AsyncMutex;
 use tokio_postgres::{Client, NoTls};
 
 use crate::domain::connection::Connection;
@@ -60,4 +63,50 @@ pub async fn connect(target: &PgTarget) -> Result<Client, AppError> {
     });
 
     Ok(client)
+}
+
+/// 接続先ごとに 1 本だけ保持する接続。
+///
+/// 以前は 1 クエリごとに接続を張っていた。一覧の表示で 19 スキーマ × 5 クエリ =
+/// 95 接続が一斉に開き、max_connections(100) を突いて
+/// `database connection failed` が出ていた。
+///
+/// プールを増やす必要はない。tokio-postgres の Client は 1 本の接続へ複数のクエリを
+/// パイプラインで詰めて送るので、同時に呼んでも直列化しない。
+/// 要るのは数ではなく、**切断からの復帰**。閉じていたら次の呼び出しで張り直す。
+type Shared = Arc<AsyncMutex<Option<Arc<Client>>>>;
+
+fn sessions() -> &'static Mutex<HashMap<String, Shared>> {
+    static SESSIONS: OnceLock<Mutex<HashMap<String, Shared>>> = OnceLock::new();
+    SESSIONS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn key_of(target: &PgTarget) -> String {
+    format!("{}:{}/{}@{}", target.host, target.port, target.database, target.user)
+}
+
+/// 接続先の共有クライアント。閉じていれば張り直す。
+pub async fn client(target: &PgTarget) -> Result<Arc<Client>, AppError> {
+    let shared = {
+        let mut map = sessions().lock().expect("session registry poisoned");
+        map.entry(key_of(target)).or_insert_with(|| Arc::new(AsyncMutex::new(None))).clone()
+    };
+
+    let mut slot = shared.lock().await;
+    if let Some(existing) = slot.as_ref() {
+        if !existing.is_closed() {
+            return Ok(Arc::clone(existing));
+        }
+    }
+
+    let fresh = Arc::new(connect(target).await?);
+    *slot = Some(Arc::clone(&fresh));
+    Ok(fresh)
+}
+
+/// 接続先を切り替えたときに、保持していた接続を捨てる。
+pub fn forget_sessions() {
+    if let Ok(mut map) = sessions().lock() {
+        map.clear();
+    }
 }

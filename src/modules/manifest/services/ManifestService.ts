@@ -1,9 +1,14 @@
-import type { IManifestRepository } from '@/modules/manifest/repositories/ManifestRepository';
+import type {
+  CatalogFunctionRow,
+  IManifestRepository,
+  ManifestOverviewRow
+} from '@/modules/manifest/repositories/ManifestRepository';
 import {
   BEARER_SECURITY,
   type BindRule,
   type HttpMethod,
   type ManifestArgument,
+  type CatalogCrud,
   type ManifestCoverage,
   type ManifestDiagnostic,
   type ManifestDocument,
@@ -23,6 +28,19 @@ export class ManifestService {
   /** 宣言できる項目の定義。画面はこれを描き、項目一覧を持たない。 */
   async loadFields(): Promise<Result<ManifestField[]>> {
     return this.manifestRepository.fields();
+  }
+
+  /** 一覧の集約。全スキーマ分を 1 回で取る。 */
+  async loadOverview(): Promise<Result<ManifestOverviewRow[]>> {
+    return this.manifestRepository.overview();
+  }
+
+  async loadAllFunctions(): Promise<Result<CatalogFunctionRow[]>> {
+    return this.manifestRepository.allFunctions();
+  }
+
+  async loadCrud(): Promise<Result<CatalogCrud[]>> {
+    return this.manifestRepository.crud();
   }
 
   async loadCoverage(schemaName: string): Promise<Result<ManifestCoverage[]>> {

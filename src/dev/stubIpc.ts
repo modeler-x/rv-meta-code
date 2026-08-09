@@ -45,6 +45,9 @@ export function installStubIpc(): void {
   const profiles = data.profiles as Record<string, { profile: string }[]>;
   const documents = data.documents as { schemaName: string; profile: string }[];
   const fields = data.fields as unknown[];
+  const overview = data.overview as unknown[];
+  const allFunctions = data.allFunctions as unknown[];
+  const crud = data.crud as unknown[];
 
   const connections = [
     {
@@ -107,6 +110,10 @@ export function installStubIpc(): void {
       }));
     },
     manifest_fields: () => fields,
+    // 一覧は 1 回で全件返す。スキーマごとに呼ばない経路であることを、スタブでも守る。
+    manifest_overview: () => overview,
+    all_manifest_functions: () => allFunctions,
+    catalog_crud: () => crud,
     manifest_coverage: (args) => coverage[String(args.schemaName)] ?? [],
     manifest_functions: (args) => functions[String(args.schemaName)] ?? [],
     diagnose_manifest: (args) => diagnostics[String(args.schemaName)] ?? [],

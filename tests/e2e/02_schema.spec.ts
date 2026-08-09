@@ -32,13 +32,23 @@ test.describe('スキーマ', () => {
     }
   });
 
-  test('行の「開く」はマニフェストへ移動するだけで、宣言を作らない', async ({ page }) => {
-    const target = schemaNames[schemaNames.length - 1];
-    await page.locator(`[data-testid="schema-row"][data-schema="${target}"] [data-testid="open-manifest"]`).click();
+  test('行の「開く」はオペレーションへ直行し、宣言を作らない', async ({ page }) => {
+    // マニフェストは 1 スキーマ 1 行の状態表示なので、経由しても得るものがない。
+    const target = fixture.overview.find((row) => row.hasManifest)!.schemaName;
+    await page.locator(`[data-testid="schema-row"][data-schema="${target}"] [data-testid="open-operations"]`).click();
 
-    await expect(page.locator(`[data-testid="manifest-row"][data-schema="${target}"]`)).toBeVisible();
+    await expect(page.locator('[data-testid="operation-row"]').first()).toBeVisible();
     expect((await calls(page)).some((c) => c.command === 'draft_manifest')).toBe(false);
     expect((await calls(page)).some((c) => c.command === 'load_manifest')).toBe(false);
+  });
+
+  test('generationMode を行に出す（出力される内容が変わるため）', async ({ page }) => {
+    for (const row of fixture.overview.filter((r) => r.generationMode)) {
+      const badge = page.locator(`[data-testid="schema-row"][data-schema="${row.schemaName}"] [data-testid="generation-mode"]`);
+      if ((await badge.count()) > 0) {
+        await expect(badge).toHaveAttribute('data-mode', row.generationMode!);
+      }
+    }
   });
 
   test('生成の操作は置かない（manifest の有無を知らない画面だから）', async ({ page }) => {

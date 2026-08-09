@@ -10,7 +10,9 @@
   import { RowSelection } from '@/shared/selection/RowSelection.svelte';
   import type { ManifestViewModel } from '@/modules/manifest/viewmodels/ManifestViewModel.svelte';
   import type { GenerationViewModel } from '@/modules/generation/viewmodels/GenerationViewModel.svelte';
-  import type { ManifestOverview } from '@/modules/manifest/types/Manifest';
+  import type { ManifestDiagnostic, ManifestOverview } from '@/modules/manifest/types/Manifest';
+  import DiagnosticList from '@/shared/components/DiagnosticList.svelte';
+  import Drawer from '@/shared/components/Drawer.svelte';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
 
   // マニフェストはスキーマ単位なので、スキーマと同じ一覧の形にする。
@@ -31,10 +33,12 @@
   let openedSchema = $state<string | null>(null);
   const selection = new RowSelection<string>();
 
+  // 一覧に並ぶのは成果物（マニフェスト）がある行だけ。まだ無いものはスキーマのページで作る。
+  const withManifest = $derived(viewModel.state.overviews.filter((row) => row.hasManifest));
   const filtered = $derived.by(() => {
     const needle = query.trim().toLowerCase();
-    if (needle.length === 0) return viewModel.state.overviews;
-    return viewModel.state.overviews.filter((row) =>
+    if (needle.length === 0) return withManifest;
+    return withManifest.filter((row) =>
       `${row.schemaName} ${row.comment ?? ''}`.toLowerCase().includes(needle)
     );
   });
@@ -84,19 +88,42 @@
         data: { 'data-profile': profile }
       }))
     ];
-    for (const [severity, count] of [
-      ['error', row.errorCount],
-      ['warning', row.warningCount]
-    ] as const) {
-      if (count === 0) continue;
+    // generationMode は出力される内容を変えるので行に出す。
+    if (row.generationMode) {
       badges.push({
-        testid: 'manifest-diagnostic-count',
-        label: `${severity} ${count}`,
-        tone: severity === 'error' ? 'danger' : 'warning',
-        data: { 'data-severity': severity, 'data-count': String(count) }
+        testid: 'generation-mode',
+        label: row.generationMode,
+        tone: row.generationMode === 'function_only' ? 'muted' : 'warning',
+        data: { 'data-mode': row.generationMode }
+      });
+    }
+    if (row.undeclaredCount > 0) {
+      badges.push({
+        testid: 'undeclared-count',
+        label: `${$t('cat_undeclared')} ${row.undeclaredCount}`,
+        tone: 'muted',
+        data: { 'data-count': String(row.undeclaredCount) }
       });
     }
     return badges;
+  }
+
+  /**
+   * 診断は複数スキーマをまとめて見て、直す場所へ飛ぶためのもの。
+   * 行ごとに開くより、選択して一括で見るほうが用途に合う。
+   * 大きなスキーマでは 25 秒かかるので、一覧では走らせず、ここで初めて実行する。
+   */
+  let diagnostics = $state<(ManifestDiagnostic & { schemaName?: string })[]>([]);
+  let diagnosticsOpen = $state(false);
+  let diagnosticsLoading = $state(false);
+
+  async function openDiagnostics(): Promise<void> {
+    const targets = selection.selectedWithin(filteredNames);
+    if (targets.length === 0) return;
+    diagnosticsOpen = true;
+    diagnosticsLoading = true;
+    diagnostics = await viewModel.loadDiagnosticsFor(targets);
+    diagnosticsLoading = false;
   }
 
   async function openDrawer(schemaName: string): Promise<void> {
@@ -119,6 +146,16 @@
   selectedCount={selection.selectedWithin(filteredNames).length}
   onToggleAll={(on) => selection.setAll(filteredNames, on)}
 >
+  <button
+    data-testid="show-diagnostics"
+    class="rounded-md border border-[color:var(--rvc-border)] px-3 py-1.5 text-xs"
+    onclick={openDiagnostics}
+  >{$t('mf_show_diagnostics')}</button>
+  <button
+    data-testid="redraft-selected"
+    class="rounded-md border border-[color:var(--rvc-border)] px-3 py-1.5 text-xs"
+    onclick={() => viewModel.askDraft(selection.selectedWithin(filteredNames))}
+  >{$t('mf_redraft')}</button>
   {#if !canGenerate}
     <span data-testid="generate-blocked" class="text-[11px]" style="color:var(--rvc-warning)">{$t('mf_need_manifest')}</span>
   {/if}
@@ -158,8 +195,7 @@
       onOpen={() => onOpenOperations(row.schemaName)}
       actions={[
         { testid: 'open-operations', label: $t('open'), onClick: () => onOpenOperations(row.schemaName) },
-        { testid: 'redraft-manifest', label: $t('mf_redraft'), onClick: () => viewModel.askDraft([row.schemaName]) },
-        { testid: 'open-diagnostics', label: $t('mf_diagnostics_open'), onClick: () => openDrawer(row.schemaName) }
+        { testid: 'open-settings', label: $t('mf_settings'), onClick: () => openDrawer(row.schemaName) }
       ]}
     />
   {/each}
@@ -167,6 +203,29 @@
     <div class="px-4 py-6 text-sm text-[color:var(--rvc-muted)]">{$t('search_no_match')}</div>
   {/if}
 </SectionList>
+
+{#if diagnosticsOpen}
+  <Drawer
+    title={$t('mf_show_diagnostics')}
+    testid="diagnostics-drawer"
+    dataAttributes={{ 'data-count': String(diagnostics.length) }}
+    onClose={() => (diagnosticsOpen = false)}
+  >
+    {#if diagnosticsLoading}
+      <p class="text-xs text-[color:var(--rvc-muted)]">{$t('mf_diagnostics_running')}</p>
+    {:else}
+      <DiagnosticList
+        diagnostics={diagnostics}
+        onOpen={(functionKey) => {
+          const target = diagnostics.find((d) => d.location.includes(functionKey));
+          diagnosticsOpen = false;
+          onOpenOperations(target?.schemaName ?? '', functionKey);
+        }}
+      />
+      <p class="mt-3 text-[11px] text-[color:var(--rvc-muted)]">{$t('mf_diagnostics_hint')}</p>
+    {/if}
+  </Drawer>
+{/if}
 
 {#if openedSchema}
   <ManifestDrawer
@@ -179,14 +238,17 @@
 {/if}
 
 <TaskSheet
-  state={viewModel.state.draftTask.state}
+  phase={viewModel.state.draftTask.state}
   title={$t('mf_draft')}
   plan={viewModel.state.draftTask.plan}
   result={viewModel.state.draftTask.result}
   emptyNotice={$t('mf_draft_nothing')}
   progress={viewModel.state.draftTask.progress}
+  targets={viewModel.state.draftTask.schemas}
+  done={viewModel.state.draftTask.done}
+  startedAt={viewModel.state.draftTask.startedAt}
   errorMessage={viewModel.state.errorMessage ?? ''}
-  onCancel={() => viewModel.closeDraftTask()}
+  onCancel={() => (viewModel.state.draftTask.state === 'running' ? viewModel.cancelDraftTask() : viewModel.closeDraftTask())}
   onRun={() => viewModel.runDraft()}
   onClose={() => { viewModel.closeDraftTask(); void reload(); }}
 />

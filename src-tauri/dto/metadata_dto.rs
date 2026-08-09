@@ -211,6 +211,49 @@ pub struct ManifestCoverageDto {
     pub state: String,
 }
 
+/// 一覧に出すスキーマ 1 件分の集約。全スキーマ分を 1 回で取る。
+///
+/// 診断は含めない。1198 operation のスキーマで 25 秒かかり、一覧を出すだけで
+/// 全スキーマ分を走らせると待たされる。診断は見たいときに見たい分だけ実行する。
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ManifestOverviewDto {
+    pub schema_name: String,
+    pub has_manifest: bool,
+    /// 出力される内容が変わるので一覧に出す。
+    pub generation_mode: Option<String>,
+    pub profiles: Vec<String>,
+    pub operations: i32,
+    pub public_routes: i32,
+    pub declared: i32,
+    pub undeclared: i32,
+    pub orphaned: i32,
+    pub updated_at: Option<String>,
+}
+
+/// スキーマを跨いだオペレーション一覧の 1 行。
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CatalogFunctionDto {
+    pub schema_name: String,
+    pub function_key: String,
+    pub state: String,
+    pub comment: Option<String>,
+    pub arguments: Value,
+    /// manifest の宣言。未宣言なら null。
+    pub operation: Option<Value>,
+}
+
+/// テーブルから自動生成された CRUD。宣言物ではないので編集できない。
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CatalogCrudDto {
+    pub schema_name: String,
+    pub table_name: String,
+    pub resource_name: String,
+    pub operations: Vec<String>,
+}
+
 /// manifest に宣言できる項目 1 件の定義。
 ///
 /// 画面はこれを描き、項目一覧を自分で持たない。持つと DB が読むキーが増えたときに漏れ、

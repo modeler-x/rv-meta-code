@@ -26,6 +26,19 @@ SELECT jsonb_pretty(jsonb_build_object(
                            'functionKey', function_key, 'state', state,
                            'comment', comment_body, 'arguments', arguments)) AS rows
                          FROM rv_meta.manifest_functions(s.schema_name)) f ON true),
+  'overview', (SELECT jsonb_agg(jsonb_build_object(
+      'schemaName', schema_name, 'hasManifest', has_manifest, 'generationMode', generation_mode,
+      'profiles', profiles, 'operations', operations, 'publicRoutes', public_routes,
+      'declared', declared, 'undeclared', undeclared, 'orphaned', orphaned,
+      'updatedAt', to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'))
+      ORDER BY schema_name) FROM rv_meta.manifest_overview()),
+  'allFunctions', (SELECT jsonb_agg(jsonb_build_object(
+      'schemaName', schema_name, 'functionKey', function_key, 'state', state,
+      'comment', comment_body, 'arguments', arguments, 'operation', operation)
+      ORDER BY schema_name, function_key) FROM rv_meta.all_manifest_functions()),
+  'crud', (SELECT jsonb_agg(jsonb_build_object(
+      'schemaName', schema_name, 'tableName', table_name, 'resourceName', resource_name,
+      'operations', operations) ORDER BY schema_name, table_name) FROM rv_meta.catalog_crud()),
   'fields', (SELECT jsonb_agg(jsonb_build_object(
       'level', level, 'field', field, 'kind', kind, 'options', options,
       'isRequired', is_required, 'inherits', inherits,

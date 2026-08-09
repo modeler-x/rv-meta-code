@@ -9,6 +9,7 @@ import {
   operationWithMostRoutes,
   routeCount,
   schemaNames,
+  schemaWithDiagnostics,
   schemaWithMostRoutes,
   schemaWithUndeclared,
   undeclaredFunction
@@ -38,16 +39,18 @@ describe('一覧の行', () => {
     const { viewModel } = await loaded();
     await viewModel.loadOverviews(schemaList());
 
-    expect(viewModel.state.overviews.map((o) => o.schemaName)).toEqual(schemaNames);
+    // 一覧は DB 側の集約 1 回で取る。スキーマごとに問い合わせない。
+    expect(viewModel.state.overviews.map((o) => o.schemaName)).toEqual(
+      fixture.overview.map((o) => o.schemaName)
+    );
     for (const overview of viewModel.state.overviews) {
-      const manifest = fixture.manifests[overview.schemaName];
-      expect(overview.hasManifest).toBe(manifest != null);
-      expect(overview.profiles).toEqual(
-        (['postgrest', 'bff'] as const).filter((p) => manifest.profiles[p] != null)
-      );
-      expect(overview.operationCount).toBe(Object.keys(manifest.operations).length);
-      expect(overview.errorCount).toBe(diagnosticCount(overview.schemaName, 'error'));
-      expect(overview.warningCount).toBe(diagnosticCount(overview.schemaName, 'warning'));
+      const source = fixture.overview.find((o) => o.schemaName === overview.schemaName)!;
+      expect(overview.hasManifest).toBe(source.hasManifest);
+      expect(overview.operationCount).toBe(source.operations);
+      // 生成モードは出力される内容を変えるので一覧が持つ。
+      expect(overview.generationMode).toBe(source.generationMode);
+      // 診断は一覧では取らない（大きなスキーマで 25 秒かかる）。見たいときに実行する。
+      expect(overview.errorCount).toBe(0);
     }
   });
 
@@ -58,6 +61,17 @@ describe('一覧の行', () => {
     expect(row.publicRouteCount).toBe(
       Object.keys(MANIFEST.operations).reduce((n, k) => n + routeCount(MANIFEST, k), 0)
     );
+  });
+
+  it('診断は一覧では取らず、選んだスキーマにだけ実行する', async () => {
+    // diagnose_manifest は 1198 operation のスキーマで 25 秒かかる。
+    // 一覧を出すだけで全スキーマ分を走らせると待たされる。
+    const { viewModel } = await loaded();
+    const schema = schemaWithDiagnostics();
+    if (!schema) return;
+    const rows = await viewModel.loadDiagnosticsFor([schema]);
+    expect(rows).toHaveLength(fixture.diagnostics[schema].length);
+    expect(rows.every((row) => row.schemaName === schema)).toBe(true);
   });
 });
 

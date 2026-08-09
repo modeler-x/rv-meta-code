@@ -1,7 +1,8 @@
 use crate::dto::compile_schema_response::CompileSchemaResponse;
 use crate::dto::metadata_dto::{
     ComponentSummaryDto, DocumentDetailDto, DocumentDto, EntityDetailDto, EntitySummaryDto,
-    ManifestCoverageDto, ManifestDiagnosticDto, ManifestDto, ManifestFieldDto, ManifestFunctionDto,
+    CatalogCrudDto, CatalogFunctionDto, ManifestCoverageDto, ManifestDiagnosticDto, ManifestDto,
+    ManifestFieldDto, ManifestFunctionDto, ManifestOverviewDto,
     OpenApiProfileDto, OpenApiSpecDto, OperationDto,
     RouteConflictDto, SchemaSummaryDto,
 };
@@ -34,6 +35,18 @@ impl MetadataService {
         profile: &str,
     ) -> Result<DocumentDetailDto, AppError> {
         self.repository.document_detail(schema, profile).await
+    }
+
+    pub async fn manifest_overview(&self) -> Result<Vec<ManifestOverviewDto>, AppError> {
+        self.repository.manifest_overview().await
+    }
+
+    pub async fn all_manifest_functions(&self) -> Result<Vec<CatalogFunctionDto>, AppError> {
+        self.repository.all_manifest_functions().await
+    }
+
+    pub async fn catalog_crud(&self) -> Result<Vec<CatalogCrudDto>, AppError> {
+        self.repository.catalog_crud().await
     }
 
     pub async fn manifest_fields(&self) -> Result<Vec<ManifestFieldDto>, AppError> {

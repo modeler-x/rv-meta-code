@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import SectionList from '@/shared/components/SectionList.svelte';
   import ListRow from '@/shared/components/ListRow.svelte';
   import SearchBox from '@/shared/components/SearchBox.svelte';
@@ -23,7 +24,8 @@
   } = $props();
 
   let query = $state('');
-  let records = $state<SdkRecord[]>(viewModel.listHistory());
+  // 初期値としてだけ読む。以降はこの画面の操作（削除）で変わる。
+  let records = $state<SdkRecord[]>(untrack(() => viewModel.listHistory()));
 
   const filtered = $derived.by(() => {
     const needle = query.trim().toLowerCase();

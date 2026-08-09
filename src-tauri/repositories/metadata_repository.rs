@@ -6,7 +6,8 @@ use std::collections::HashSet;
 
 use crate::dto::metadata_dto::{
     ComponentSummaryDto, DocumentDetailDto, DocumentDto, EntityDetailDto, EntitySummaryDto, FieldDto,
-    ManifestCoverageDto, ManifestDiagnosticDto, ManifestDto, ManifestFieldDto, ManifestFunctionDto,
+    CatalogCrudDto, CatalogFunctionDto, ManifestCoverageDto, ManifestDiagnosticDto, ManifestDto,
+    ManifestFieldDto, ManifestFunctionDto, ManifestOverviewDto,
     OpenApiProfileDto, OpenApiSpecDto, OperationDto,
     RelationDto, RouteConflictDto, SchemaSummaryDto,
 };
@@ -72,7 +73,7 @@ impl MetadataRepository {
     }
 
     pub async fn list_schemas(&self) -> Result<Vec<SchemaSummaryDto>, AppError> {
-        let client = pg::connect(&self.target).await?;
+        let client = pg::client(&self.target).await?;
         let exclude_patterns: Vec<String> = self
             .target
             .excluded_schemas
@@ -109,7 +110,7 @@ impl MetadataRepository {
     }
 
     pub async fn list_documents(&self) -> Result<Vec<DocumentDto>, AppError> {
-        let client = pg::connect(&self.target).await?;
+        let client = pg::client(&self.target).await?;
         let rows = client
             .query(
                 // 1 スキーマが最大 2 契約を持つ。profile で畳まずに行として出す。
@@ -143,7 +144,7 @@ impl MetadataRepository {
         schema: &str,
         profile: &str,
     ) -> Result<DocumentDetailDto, AppError> {
-        let client = pg::connect(&self.target).await?;
+        let client = pg::client(&self.target).await?;
         let row = client
             .query_opt(
                 "SELECT d.id, d.schema_name, d.profile, d.title, d.version, d.description, d.generation_mode,
@@ -195,7 +196,7 @@ impl MetadataRepository {
     /// components（schemas / responses / securitySchemes）の一覧。
     /// 宣言（template/document override）を SQL で取り、最終出力(emitted)と generated を Rust で統合する。
     pub async fn list_components(&self, schema: &str) -> Result<Vec<ComponentSummaryDto>, AppError> {
-        let client = pg::connect(&self.target).await?;
+        let client = pg::client(&self.target).await?;
 
         // 宣言済み component（template + document override）。override を優先した有効値。
         let declared = client
@@ -268,7 +269,7 @@ impl MetadataRepository {
         &self,
         schema: Option<&str>,
     ) -> Result<Vec<EntitySummaryDto>, AppError> {
-        let client = pg::connect(&self.target).await?;
+        let client = pg::client(&self.target).await?;
         let rows = client
             .query(
                 "SELECT e.id, e.table_schema, e.table_name, e.resource_name, e.description,
@@ -300,7 +301,7 @@ impl MetadataRepository {
     }
 
     pub async fn entity_detail(&self, entity_id: i32) -> Result<EntityDetailDto, AppError> {
-        let client = pg::connect(&self.target).await?;
+        let client = pg::client(&self.target).await?;
         let schema: String = client
             .query_one(
                 "SELECT d.schema_name
@@ -358,7 +359,7 @@ impl MetadataRepository {
     }
 
     pub async fn get_operation(&self, operation_row_id: i32) -> Result<OperationDto, AppError> {
-        let client = pg::connect(&self.target).await?;
+        let client = pg::client(&self.target).await?;
         let schema: String = client
             .query_opt(
                 "SELECT d.schema_name
@@ -388,7 +389,7 @@ impl MetadataRepository {
         schemas: &[String],
         profile: &str,
     ) -> Result<Vec<OpenApiSpecDto>, AppError> {
-        let client = pg::connect(&self.target).await?;
+        let client = pg::client(&self.target).await?;
         let mut specs = Vec::with_capacity(schemas.len());
         for schema in schemas {
             // 未宣言 22023 / 未 compile 55000 はそのまま失敗させる。
@@ -416,7 +417,7 @@ impl MetadataRepository {
         table: &str,
         is_read_only: bool,
     ) -> Result<(), AppError> {
-        let client = pg::connect(&self.target).await?;
+        let client = pg::client(&self.target).await?;
         client
             .execute(
                 "SELECT rv_meta.set_read_only($1, $2, $3)",
@@ -427,7 +428,7 @@ impl MetadataRepository {
     }
 
     pub async fn compile(&self, schema: &str) -> Result<CompileSchemaResponse, AppError> {
-        let client = pg::connect(&self.target).await?;
+        let client = pg::client(&self.target).await?;
         client
             .query_one("SELECT rv_meta.compile($1)", &[&schema])
             .await?;
@@ -460,7 +461,7 @@ impl MetadataRepository {
         &self,
         schema: &str,
     ) -> Result<Vec<RouteConflictDto>, AppError> {
-        let client = pg::connect(&self.target).await?;
+        let client = pg::client(&self.target).await?;
         let rows = client
             .query(
                 "SELECT method, path, function_name, entity_table, entity_resource, recommendation
@@ -488,7 +489,7 @@ impl MetadataRepository {
         &self,
         schema: Option<&str>,
     ) -> Result<Vec<OperationGroupSummaryDto>, AppError> {
-        let client = pg::connect(&self.target).await?;
+        let client = pg::client(&self.target).await?;
         let rows = client
             .query(
                 "SELECT g.id, g.document_id, d.schema_name, g.group_key, g.display_name, g.description,
@@ -510,7 +511,7 @@ impl MetadataRepository {
         schema: &str,
         group_key: &str,
     ) -> Result<OperationGroupDetailDto, AppError> {
-        let client = pg::connect(&self.target).await?;
+        let client = pg::client(&self.target).await?;
         let group = client
             .query_opt(
                 "SELECT g.id, g.document_id, d.schema_name, g.group_key, g.display_name, g.description,
@@ -550,7 +551,7 @@ impl MetadataRepository {
         &self,
         schema: &str,
     ) -> Result<Vec<ManifestCoverageDto>, AppError> {
-        let client = pg::connect(&self.target).await?;
+        let client = pg::client(&self.target).await?;
         let rows = client
             .query(
                 "SELECT function_key, state FROM rv_meta.manifest_coverage($1) ORDER BY state, function_key",
@@ -566,9 +567,94 @@ impl MetadataRepository {
             .collect())
     }
 
+    /// 一覧の集約を全スキーマ分 1 回で取る。
+    ///
+    /// スキーマごとに問い合わせると 19 スキーマで 95 回になり、接続が尽きる。
+    pub async fn manifest_overview(&self) -> Result<Vec<ManifestOverviewDto>, AppError> {
+        let client = pg::client(&self.target).await?;
+        // 一覧に出す範囲は接続の除外設定に従う。list_schemas と揃えないと、
+        // スキーマの一覧に無いものがマニフェストの一覧に現れる。
+        let exclude_patterns: Vec<String> = self
+            .target
+            .excluded_schemas
+            .iter()
+            .map(|pattern| pattern.trim())
+            .filter(|pattern| !pattern.is_empty())
+            .map(glob_to_like)
+            .collect();
+        let rows = client
+            .query(
+                "SELECT schema_name, has_manifest, generation_mode, profiles, operations,
+                        public_routes, declared, undeclared, orphaned,
+                        to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')
+                 FROM rv_meta.manifest_overview()
+                 WHERE NOT (schema_name LIKE ANY($1::text[]))",
+                &[&exclude_patterns],
+            )
+            .await?;
+        Ok(rows
+            .iter()
+            .map(|row| ManifestOverviewDto {
+                schema_name: row.get(0),
+                has_manifest: row.get(1),
+                generation_mode: row.get(2),
+                profiles: row.get(3),
+                operations: row.get(4),
+                public_routes: row.get(5),
+                declared: row.get(6),
+                undeclared: row.get(7),
+                orphaned: row.get(8),
+                updated_at: row.get(9),
+            })
+            .collect())
+    }
+
+    /// スキーマを跨いだオペレーション一覧の材料。
+    pub async fn all_manifest_functions(&self) -> Result<Vec<CatalogFunctionDto>, AppError> {
+        let client = pg::client(&self.target).await?;
+        let rows = client
+            .query(
+                "SELECT schema_name, function_key, state, comment_body, arguments, operation
+                 FROM rv_meta.all_manifest_functions()",
+                &[],
+            )
+            .await?;
+        Ok(rows
+            .iter()
+            .map(|row| CatalogFunctionDto {
+                schema_name: row.get(0),
+                function_key: row.get(1),
+                state: row.get(2),
+                comment: row.get(3),
+                arguments: row.get(4),
+                operation: row.get(5),
+            })
+            .collect())
+    }
+
+    /// テーブルから自動生成された CRUD。編集できないものとして一覧に出す。
+    pub async fn catalog_crud(&self) -> Result<Vec<CatalogCrudDto>, AppError> {
+        let client = pg::client(&self.target).await?;
+        let rows = client
+            .query(
+                "SELECT schema_name, table_name, resource_name, operations FROM rv_meta.catalog_crud()",
+                &[],
+            )
+            .await?;
+        Ok(rows
+            .iter()
+            .map(|row| CatalogCrudDto {
+                schema_name: row.get(0),
+                table_name: row.get(1),
+                resource_name: row.get(2),
+                operations: row.get(3),
+            })
+            .collect())
+    }
+
     /// 宣言できる項目の定義。画面はこれを描く。
     pub async fn manifest_fields(&self) -> Result<Vec<ManifestFieldDto>, AppError> {
-        let client = pg::connect(&self.target).await?;
+        let client = pg::client(&self.target).await?;
         let rows = client
             .query(
                 "SELECT level, field, kind, options, is_required, inherits, derived_from, note
@@ -593,7 +679,7 @@ impl MetadataRepository {
 
     /// profile ごとの宣言状態と生成状態。UI と CI が同じ公開関数を見る。
     pub async fn openapi_profiles(&self, schema: &str) -> Result<Vec<OpenApiProfileDto>, AppError> {
-        let client = pg::connect(&self.target).await?;
+        let client = pg::client(&self.target).await?;
         let rows = client
             .query(
                 "SELECT profile, declared, compiled, operations, operation_groups, document_hash,
@@ -623,7 +709,7 @@ impl MetadataRepository {
         &self,
         schema: &str,
     ) -> Result<Vec<ManifestFunctionDto>, AppError> {
-        let client = pg::connect(&self.target).await?;
+        let client = pg::client(&self.target).await?;
         let rows = client
             .query(
                 "SELECT function_key, state, comment_body, arguments
@@ -648,7 +734,7 @@ impl MetadataRepository {
         &self,
         schema: &str,
     ) -> Result<Vec<ManifestDiagnosticDto>, AppError> {
-        let client = pg::connect(&self.target).await?;
+        let client = pg::client(&self.target).await?;
         let rows = client
             .query(
                 "SELECT severity, location, code, message, hint
@@ -672,7 +758,7 @@ impl MetadataRepository {
     /// DB に入っている下書き。未登録なら manifest が None で返る（エラーにしない）。
     /// 「まだ作っていない」は UI が扱う正常な状態で、例外にすると分岐が増えるだけになる。
     pub async fn get_manifest(&self, schema: &str) -> Result<ManifestDto, AppError> {
-        let client = pg::connect(&self.target).await?;
+        let client = pg::client(&self.target).await?;
         let row = client
             .query_opt(
                 "SELECT manifest, updated_at::text FROM rv_meta.openapi_manifests WHERE schema_name = $1",
@@ -690,7 +776,7 @@ impl MetadataRepository {
     /// 推測した security（要認証）や tags が確認を経ずに確定しないよう、
     /// 投入は人が確認してから load_manifest で行う。
     pub async fn draft_manifest(&self, schema: &str) -> Result<Value, AppError> {
-        let client = pg::connect(&self.target).await?;
+        let client = pg::client(&self.target).await?;
         Ok(client
             .query_one("SELECT rv_meta.draft_manifest($1)", &[&schema])
             .await?
@@ -701,7 +787,7 @@ impl MetadataRepository {
     /// 壊れた宣言を保存すると、後続の compile が落ちたときに原因が投入時か
     /// compile 時か分からなくなる。
     pub async fn load_manifest(&self, schema: &str, manifest: &Value) -> Result<Value, AppError> {
-        let client = pg::connect(&self.target).await?;
+        let client = pg::client(&self.target).await?;
         Ok(client
             .query_one("SELECT rv_meta.load_manifest($1, $2)", &[&schema, manifest])
             .await?

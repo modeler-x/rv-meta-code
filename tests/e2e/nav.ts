@@ -15,9 +15,17 @@ export async function gotoPage(page: Page, route: string): Promise<void> {
 export async function openManifestDrawer(page: Page, schema: string): Promise<void> {
   await gotoPage(page, 'manifest');
   await page
-    .locator(`[data-testid="manifest-row"][data-schema="${schema}"] [data-testid="open-diagnostics"]`)
+    .locator(`[data-testid="manifest-row"][data-schema="${schema}"] [data-testid="open-settings"]`)
     .click();
   await expect(page.locator(`[data-testid="manifest-drawer"][data-schema="${schema}"]`)).toBeVisible();
+}
+
+/** 診断は複数スキーマをまとめて見るもの。行を選んで一括操作から開く。 */
+export async function openDiagnostics(page: Page, schema: string): Promise<void> {
+  await gotoPage(page, 'manifest');
+  await page.locator(`[data-testid="manifest-row"][data-schema="${schema}"] [data-testid="manifest-row-select"]`).check();
+  await page.locator('[data-testid="show-diagnostics"]').click();
+  await expect(page.locator('[data-testid="diagnostics-drawer"]')).toBeVisible();
 }
 
 /**

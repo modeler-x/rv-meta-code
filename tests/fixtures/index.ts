@@ -74,6 +74,35 @@ export type ManifestFieldRow = {
   note: string | null;
 };
 
+export type OverviewRow = {
+  schemaName: string;
+  hasManifest: boolean;
+  generationMode: string | null;
+  profiles: string[];
+  operations: number;
+  publicRoutes: number;
+  declared: number;
+  undeclared: number;
+  orphaned: number;
+  updatedAt: string | null;
+};
+
+export type CatalogFunctionRow = {
+  schemaName: string;
+  functionKey: string;
+  state: CoverageState;
+  comment: string | null;
+  arguments: ManifestArgument[];
+  operation: Operation | null;
+};
+
+export type CrudRow = {
+  schemaName: string;
+  tableName: string;
+  resourceName: string;
+  operations: string[];
+};
+
 export type Fixture = {
   list_schemas: {
     schemaName: string;
@@ -89,6 +118,10 @@ export type Fixture = {
   documents: OpenApiDocument[];
   /** 宣言できる項目の定義。画面はこれを描く。 */
   fields: ManifestFieldRow[];
+  /** 一覧の集約。スキーマごとに問い合わせない経路の材料。 */
+  overview: OverviewRow[];
+  allFunctions: CatalogFunctionRow[];
+  crud: CrudRow[];
 };
 
 const here = dirname(fileURLToPath(import.meta.url));

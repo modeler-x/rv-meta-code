@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { installTauriStub, calls } from './stub';
-import { gotoPage, openManifestDrawer } from './nav';
+import { gotoPage, openDiagnostics, openManifestDrawer } from './nav';
 import {
   diagnosticCount,
   fixture,
@@ -26,7 +26,7 @@ test.describe('マニフェスト', () => {
     const diagnostic = schema ? jumpableDiagnostic(schema) : null;
     test.skip(!diagnostic, 'operation を指す診断がフィクスチャに無い');
 
-    await openManifestDrawer(page, schema!);
+    await openDiagnostics(page, schema!);
     await page.locator(`[data-testid="diagnostic-jump"][data-code="${diagnostic!.code}"]`).first().click();
 
     // 飛んだ先がその関数のオペレーション編集であること。

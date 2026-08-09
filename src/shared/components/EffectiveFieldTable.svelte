@@ -137,10 +137,18 @@
       class="border-b border-[color:var(--rvc-border)] px-3 py-2 last:border-b-0"
       style={row.source === 'own' ? 'background:color-mix(in srgb, var(--rvc-accent) 5%, transparent)' : ''}
     >
-      <div class="flex flex-wrap items-center gap-3">
-        <span class="w-40 shrink-0 truncate font-mono text-[11px] font-semibold rvc-value" title={row.definition.note ?? ''}>
-          {row.definition.field}
-          {#if row.definition.isRequired}<span style="color:var(--rvc-danger)">*</span>{/if}
+      <div class="flex flex-wrap items-start gap-3">
+        <!-- 何を書けばよいかを常時出す。ツールチップだと、迷っている人ほど気づけない。 -->
+        <span class="flex w-52 shrink-0 flex-col gap-0.5">
+          <span class="truncate font-mono text-[11px] font-semibold rvc-value">
+            {row.definition.field}
+            {#if row.definition.isRequired}<span style="color:var(--rvc-danger)">*</span>{/if}
+          </span>
+          {#if row.definition.note}
+            <span data-testid="field-note" class="text-[10.5px] leading-snug text-[color:var(--rvc-muted)]">
+              {row.definition.note}
+            </span>
+          {/if}
         </span>
         <span
           data-testid="field-value"

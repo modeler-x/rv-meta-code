@@ -32,11 +32,12 @@
     onOpenHelp?: (page: string) => void;
   } = $props();
 
-  type Tab = 'diagnostics' | 'profiles' | 'defaults';
-  let tab = $state<Tab>('diagnostics');
+  type Tab = 'profiles' | 'defaults';
+  let tab = $state<Tab>('profiles');
 
+  // 診断はここに置かない。複数スキーマをまとめて見るものなので、一覧の一括操作にある。
+  // ここは編集（profile / defaults）だけを扱い、情報の性質と操作を一致させる。
   const tabs = $derived([
-    { label: `${$t('mf_sec_diagnostics')} ${viewModel.state.diagnostics.length}`, value: 'diagnostics' },
     { label: $t('mf_sec_profiles'), value: 'profiles' },
     { label: $t('mf_sec_defaults'), value: 'defaults' }
   ]);
@@ -77,10 +78,7 @@
     <SegmentedControl options={tabs} value={tab} onSelect={(value) => (tab = value as Tab)} />
   </div>
 
-  {#if tab === 'diagnostics'}
-    <DiagnosticList diagnostics={viewModel.state.diagnostics} onOpen={onOpenOperation} />
-    <p class="mt-3 text-[11px] text-[color:var(--rvc-muted)]">{$t('mf_diagnostics_hint')}</p>
-  {:else if tab === 'profiles'}
+  {#if tab === 'profiles'}
     <div class="flex flex-col gap-4">
       {#each PROFILE_NAMES as profile}
         {@const value = viewModel.profileOf(profile)}

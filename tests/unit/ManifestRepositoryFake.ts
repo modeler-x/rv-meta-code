@@ -39,6 +39,18 @@ export class FakeManifestRepository implements IManifestRepository {
     return ok(fixture.fields as ManifestField[]);
   }
 
+  async overview(): Promise<Result<never>> {
+    return ok(fixture.overview) as Result<never>;
+  }
+
+  async allFunctions(): Promise<Result<never>> {
+    return ok(fixture.allFunctions) as Result<never>;
+  }
+
+  async crud(): Promise<Result<never>> {
+    return ok(fixture.crud) as Result<never>;
+  }
+
   async coverage(schemaName: string): Promise<Result<ManifestCoverage[]>> {
     return ok((fixture.coverage[schemaName] ?? []) as ManifestCoverage[]);
   }

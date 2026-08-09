@@ -26,6 +26,7 @@ import {
   type CoverageState,
   type HttpMethod,
   type ManifestArgument,
+  type CatalogCrud,
   type ManifestCoverage,
   type ManifestDefaults,
   type ManifestDiagnostic,
@@ -68,12 +69,20 @@ export type ManifestViewModelState = {
     plan: string[];
     result: string[];
     progress: number;
+    /** 完了した件数。進捗に「いまどれを処理しているか」を出すため。 */
+    done: number;
+    /** 実行を始めた時刻。経過を出して、止まっていないことを示す。 */
+    startedAt: number | null;
+    /** 中止が押されたか。次の 1 件へ進む前に見る。 */
+    cancelled: boolean;
   };
   /**
    * 全スキーマの公開関数。一覧を横断させるために持つ。
    * 編集は 1 スキーマずつなので、行を開いたときに load() で切り替える。
    */
   catalog: OperationRow[];
+  /** テーブルから自動生成された CRUD。編集できない行として一覧に出す。 */
+  crud: CatalogCrud[];
 };
 
 /** オペレーション一覧の 1 行。スキーマを跨いで並べる。 */
@@ -102,7 +111,11 @@ export class ManifestViewModel {
     overviews: [],
     fields: [],
     catalog: [],
-    draftTask: { state: 'idle', schemas: [], plan: [], result: [], progress: 0 }
+    crud: [],
+    draftTask: {
+      state: 'idle', schemas: [], plan: [], result: [], progress: 0,
+      done: 0, startedAt: null, cancelled: false
+    }
   });
 
   constructor(private readonly manifestService: ManifestService) {}
@@ -155,77 +168,78 @@ export class ManifestViewModel {
 
   /**
    * 一覧の行をまとめて作る。
-   * 1 件失敗しても他は出す。一覧が丸ごと空になるより、引けた分を見せるほうが役に立つ。
+   *
+   * スキーマごとに問い合わせない。19 スキーマで 95 回の呼び出しになり、
+   * そのたびに接続が開いて max_connections を突いていた。DB 側の集約 1 回で取る。
+   * 診断（error / warning）はここに含めない。大きなスキーマで 25 秒かかるので、
+   * 見たいときに見たいスキーマだけ実行する。
    */
-  async loadOverviews(schemas: { name: string; comment: string | null }[]): Promise<void> {
+  async loadOverviews(schemas: { name: string; comment: string | null }[] = []): Promise<void> {
+    const result = await this.manifestService.loadOverview();
+    if (!result.success) {
+      this.state.errorMessage = result.error.message;
+      return;
+    }
+    const comments = new Map(schemas.map((schema) => [schema.name, schema.comment]));
+    this.state.overviews = result.data.map((row) => ({
+      schemaName: row.schemaName,
+      comment: comments.get(row.schemaName) ?? null,
+      hasManifest: row.hasManifest,
+      generationMode: row.generationMode,
+      profiles: row.profiles.filter((name): name is ProfileName =>
+        (PROFILE_NAMES as readonly string[]).includes(name)
+      ),
+      operationCount: row.operations,
+      publicRouteCount: row.publicRoutes,
+      undeclaredCount: row.undeclared,
+      // 診断は一括操作で取る。一覧のためにここで走らせない。
+      errorCount: 0,
+      warningCount: 0
+    }));
+    this.state.coverageBySchema = Object.fromEntries(
+      result.data.map((row) => [
+        row.schemaName,
+        { declared: row.declared, undeclared: row.undeclared, orphaned: row.orphaned }
+      ])
+    );
+  }
+
+  /** 選んだスキーマの診断だけを取る。見たいときに、見たい分だけ。 */
+  async loadDiagnosticsFor(schemaNames: string[]): Promise<ManifestDiagnostic[]> {
     const rows = await Promise.all(
-      schemas.map(async (schema) => {
-        const [stored, coverage, diagnostics] = await Promise.all([
-          this.manifestService.loadManifest(schema.name),
-          this.manifestService.loadCoverage(schema.name),
-          this.manifestService.loadDiagnostics(schema.name)
-        ]);
-        const manifest = stored.success ? stored.data.manifest : null;
-        const operations = manifest?.operations ?? {};
-        const diagnosticList = diagnostics.success ? diagnostics.data : [];
-        const coverageList = coverage.success ? coverage.data : [];
-        const overview: ManifestOverview = {
-          schemaName: schema.name,
-          comment: schema.comment,
-          hasManifest: manifest != null,
-          profiles: PROFILE_NAMES.filter((name) => manifest?.profiles?.[name] != null),
-          operationCount: Object.keys(operations).length,
-          publicRouteCount: Object.values(operations).reduce(
-            (total, operation) => total + (operation.publicRoutes?.length ?? 0),
-            0
-          ),
-          undeclaredCount: coverageList.filter((c) => c.state === 'undeclared').length,
-          errorCount: diagnosticList.filter((d) => d.severity === 'error').length,
-          warningCount: diagnosticList.filter((d) => d.severity === 'warning').length
-        };
-        const counts: CoverageCounts = { declared: 0, undeclared: 0, orphaned: 0 };
-        for (const row of coverageList) counts[row.state] += 1;
-        return { overview, counts };
+      schemaNames.map(async (name) => {
+        const result = await this.manifestService.loadDiagnostics(name);
+        return result.success ? result.data.map((d) => ({ ...d, schemaName: name })) : [];
       })
     );
-
-    this.state.overviews = rows.map((row) => row.overview);
-    this.state.coverageBySchema = Object.fromEntries(
-      rows.map((row) => [row.overview.schemaName, row.counts])
-    );
+    return rows.flat();
   }
 
   /**
    * 全スキーマの公開関数を 1 本の一覧にする。
    *
    * スキーマを選ぶドロップダウンを置かず、絞り込みは検索窓に任せるため、
-   * 行はスキーマを跨いで並べる。他スキーマの同種の宣言と見比べられる。
+   * 行はスキーマを跨いで並べる。DB 側の集約 1 回で取る。
    */
-  async loadCatalog(schemaNames: string[]): Promise<void> {
-    const rows = await Promise.all(
-      schemaNames.map(async (schemaName) => {
-        const [functions, stored] = await Promise.all([
-          this.manifestService.loadFunctions(schemaName),
-          this.manifestService.loadManifest(schemaName)
-        ]);
-        if (!functions.success) return [];
-        const operations = (stored.success ? stored.data.manifest?.operations : undefined) ?? {};
-        return functions.data.map((fn) => {
-          const operation = operations[fn.functionKey];
-          return {
-            schemaName,
-            functionKey: fn.functionKey,
-            operationId: operation?.operationId ?? null,
-            state: fn.state,
-            declared: operation != null,
-            routeCount: operation?.publicRoutes?.length ?? 0,
-            // 説明は宣言が原本だが、無ければ関数の COMMENT。空欄を並べても読めない。
-            description: operation?.description ?? fn.comment ?? ''
-          } satisfies OperationRow;
-        });
-      })
-    );
-    this.state.catalog = rows.flat();
+  async loadCatalog(_schemaNames: string[] = []): Promise<void> {
+    const [functions, crud] = await Promise.all([
+      this.manifestService.loadAllFunctions(),
+      this.manifestService.loadCrud()
+    ]);
+    if (functions.success) {
+      this.state.catalog = functions.data.map((row) => ({
+        schemaName: row.schemaName,
+        functionKey: row.functionKey,
+        operationId: row.operation?.operationId ?? null,
+        state: row.state as CoverageState,
+        declared: row.operation != null,
+        routeCount: row.operation?.publicRoutes?.length ?? 0,
+        // 説明は宣言が原本だが、無ければ関数の COMMENT。空欄を並べても読めない。
+        description: row.operation?.description ?? row.comment ?? ''
+      }));
+    }
+    // CRUD はテーブルから自動生成される。宣言が無いので編集できない行として持つ。
+    this.state.crud = crud.success ? crud.data : [];
   }
 
   /** 一覧行の件数だけを引き直す。中身は開いたときに読む。 */
@@ -257,7 +271,10 @@ export class ManifestViewModel {
       if (!overview?.hasManifest) plan.push(`${name} — 新規に作る`);
       else if (adding > 0) plan.push(`${name} — ${adding} 件の宣言を足す`);
     }
-    this.state.draftTask = { state: 'confirm', schemas: schemaNames, plan, result: [], progress: 0 };
+    this.state.draftTask = {
+      state: 'confirm', schemas: schemaNames, plan, result: [], progress: 0,
+      done: 0, startedAt: null, cancelled: false
+    };
   }
 
   /**
@@ -268,11 +285,24 @@ export class ManifestViewModel {
    */
   async runDraft(): Promise<void> {
     const schemaNames = this.state.draftTask.schemas;
-    this.state.draftTask = { ...this.state.draftTask, state: 'running', progress: 0 };
+    this.state.draftTask = {
+      ...this.state.draftTask,
+      state: 'running',
+      progress: 0,
+      done: 0,
+      startedAt: Date.now(),
+      cancelled: false
+    };
     this.state.errorMessage = null;
     const result: string[] = [];
 
     for (const [index, name] of schemaNames.entries()) {
+      // 中止は「次の 1 件へ進まない」。走っている 1 件は途中で止められない
+      // （DB 側のトランザクションなので、途中で切ると中途半端になる）。
+      if (this.state.draftTask.cancelled) {
+        this.state.draftTask = { ...this.state.draftTask, state: 'done', result, progress: 100 };
+        return;
+      }
       const before = this.state.overviews.find((row) => row.schemaName === name)?.operationCount ?? 0;
       const drafted = await this.manifestService.draftManifest(name);
       if (!drafted.success) {
@@ -290,6 +320,7 @@ export class ManifestViewModel {
       if (after !== before) result.push(`${name} — 宣言 ${before} → ${after}`);
       this.state.draftTask = {
         ...this.state.draftTask,
+        done: index + 1,
         progress: Math.round(((index + 1) / schemaNames.length) * 100)
       };
     }
@@ -298,12 +329,23 @@ export class ManifestViewModel {
   }
 
   closeDraftTask(): void {
-    this.state.draftTask = { state: 'idle', schemas: [], plan: [], result: [], progress: 0 };
+    this.state.draftTask = {
+      state: 'idle', schemas: [], plan: [], result: [], progress: 0,
+      done: 0, startedAt: null, cancelled: false
+    };
+  }
+
+  /** 中止。走っている 1 件は最後まで進み、次へは進まない。 */
+  cancelDraftTask(): void {
+    this.state.draftTask = { ...this.state.draftTask, cancelled: true };
   }
 
   /** 確認を挟まずに起こす。確認済みの経路とテストから使う。 */
   async draftMany(schemaNames: string[]): Promise<void> {
-    this.state.draftTask = { state: 'confirm', schemas: schemaNames, plan: [], result: [], progress: 0 };
+    this.state.draftTask = {
+      state: 'confirm', schemas: schemaNames, plan: [], result: [], progress: 0,
+      done: 0, startedAt: null, cancelled: false
+    };
     await this.runDraft();
     this.closeDraftTask();
   }
@@ -321,9 +363,16 @@ export class ManifestViewModel {
 
   // ────────────────────────────── 有効値（値 + 由来）
 
+  /**
+   * 有効値を計算するための入力。
+   *
+   * ここで requireDraft() を呼ばない。読み取りの途中で state を書き換えると
+   * Svelte が state_unsafe_mutation で描画を止める（実際に画面が出なくなった）。
+   * 未読み込みのときは空の宣言として扱い、書き込みは編集の操作側だけが行う。
+   */
   private context(profile: ProfileName, functionKey?: string) {
     return {
-      manifest: this.requireDraft(),
+      manifest: this.state.draft ?? { schema: this.state.schemaName ?? '', profiles: {}, operations: {} },
       profile,
       functionKey,
       fn: functionKey ? this.functionOf(functionKey) : undefined,

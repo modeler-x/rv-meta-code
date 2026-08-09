@@ -29,6 +29,7 @@
     icon,
     title,
     subtitle = '',
+    lines = [],
     query = '',
     badges = [],
     action,
@@ -43,6 +44,8 @@
     icon?: { label: string; color: string };
     title: string;
     subtitle?: string;
+    /** 追加の行。関数 / スキーマ / 説明 / operationId のように積む。 */
+    lines?: { text: string; mono?: boolean }[];
     /** 検索語。一致箇所を強調する。 */
     query?: string;
     badges?: RowBadge[];
@@ -75,6 +78,11 @@
         {#if subtitle}
           <span class="block truncate text-xs text-[color:var(--rvc-muted)] rvc-value"><HighlightText text={subtitle} {query} /></span>
         {/if}
+        {#each lines as line}
+          <span class={`block truncate text-xs text-[color:var(--rvc-muted)] rvc-value ${line.mono === false ? '' : 'font-mono'}`}>
+            <HighlightText text={line.text} {query} />
+          </span>
+        {/each}
       </span>
       <span class="flex shrink-0 items-center gap-1">
         {#each badges as badge}

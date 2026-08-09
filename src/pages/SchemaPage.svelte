@@ -1,6 +1,6 @@
 <script lang="ts">
   import SectionList from '@/shared/components/SectionList.svelte';
-  import ListRow from '@/shared/components/ListRow.svelte';
+  import ListRow, { type RowBadge } from '@/shared/components/ListRow.svelte';
   import SearchBox from '@/shared/components/SearchBox.svelte';
   import StageRail from '@/shared/components/StageRail.svelte';
   import SelectionToolbar from '@/shared/components/SelectionToolbar.svelte';
@@ -12,12 +12,13 @@
   let {
     viewModel,
     manifestViewModel,
-    onOpenManifest,
+    onOpenOperations,
     onDrafted
   }: {
     viewModel: SchemaViewModel;
     manifestViewModel: ManifestViewModel;
-    onOpenManifest?: (schemaName: string) => void;
+    /** 行のクリックはここへ。マニフェストは 1 スキーマ 1 行の状態表示なので経由しない。 */
+    onOpenOperations?: (schemaName: string) => void;
     /** 作り終えたら次の工程（マニフェスト）へ渡すために呼ぶ。 */
     onDrafted?: () => void;
   } = $props();
@@ -30,6 +31,31 @@
 
   function hasManifest(name: string): boolean {
     return withManifest.has(name);
+  }
+
+  /**
+   * 行のバッジ。generationMode を出すのは、これによって出力される内容が変わるため。
+   * entity_and_function はテーブル CRUD も生成し、function_only は宣言した関数だけを出す。
+   */
+  function badgesOf(name: string): RowBadge[] {
+    const overview = manifestViewModel.state.overviews.find((row) => row.schemaName === name);
+    const badges: RowBadge[] = [
+      {
+        testid: 'manifest-state',
+        label: overview?.hasManifest ? $t('mf_present') : $t('mf_not_created'),
+        tone: overview?.hasManifest ? 'success' : 'muted',
+        data: { 'data-state': overview?.hasManifest ? 'present' : 'absent' }
+      }
+    ];
+    if (overview?.generationMode) {
+      badges.push({
+        testid: 'generation-mode',
+        label: overview.generationMode,
+        tone: overview.generationMode === 'function_only' ? 'muted' : 'warning',
+        data: { 'data-mode': overview.generationMode }
+      });
+    }
+    return badges;
   }
 
   let query = $state('');
@@ -52,6 +78,10 @@
    */
   function draftSelected(): void {
     manifestViewModel.askDraft(selection.selectedWithin(filteredNames));
+  }
+
+  function draftOne(schemaName: string): void {
+    manifestViewModel.askDraft([schemaName]);
   }
 </script>
 
@@ -81,17 +111,13 @@
       title={schema.name}
       subtitle={`${schema.comment ?? ''}${schema.comment ? ' · ' : ''}${schema.tableCount} ${$t('unit_tables')} / ${schema.viewCount} ${$t('unit_views')}`}
       {query}
-      badges={[{
-        testid: 'manifest-state',
-        label: hasManifest(schema.name) ? $t('mf_present') : $t('mf_not_created'),
-        tone: hasManifest(schema.name) ? 'success' : 'muted',
-        data: { 'data-state': hasManifest(schema.name) ? 'present' : 'absent' }
-      }]}
+      badges={badgesOf(schema.name)}
       selected={selection.isSelected(schema.name)}
       onToggle={() => selection.toggle(schema.name)}
-      action={onOpenManifest
-        ? { testid: 'open-manifest', label: $t('open'), onClick: () => onOpenManifest?.(schema.name) }
-        : undefined}
+      onOpen={() => (hasManifest(schema.name) ? onOpenOperations?.(schema.name) : draftOne(schema.name))}
+      action={hasManifest(schema.name)
+        ? { testid: 'open-operations', label: $t('open'), onClick: () => onOpenOperations?.(schema.name) }
+        : { testid: 'draft-one', label: $t('mf_create'), onClick: () => draftOne(schema.name) }}
     />
   {/each}
   {#if filtered.length === 0}
@@ -100,14 +126,17 @@
 </SectionList>
 
 <TaskSheet
-  state={manifestViewModel.state.draftTask.state}
+  phase={manifestViewModel.state.draftTask.state}
   title={$t('mf_draft')}
   plan={manifestViewModel.state.draftTask.plan}
   result={manifestViewModel.state.draftTask.result}
   emptyNotice={$t('mf_draft_nothing')}
   progress={manifestViewModel.state.draftTask.progress}
+  targets={manifestViewModel.state.draftTask.schemas}
+  done={manifestViewModel.state.draftTask.done}
+  startedAt={manifestViewModel.state.draftTask.startedAt}
   errorMessage={manifestViewModel.state.errorMessage ?? ''}
-  onCancel={() => manifestViewModel.closeDraftTask()}
+  onCancel={() => (manifestViewModel.state.draftTask.state === 'running' ? manifestViewModel.cancelDraftTask() : manifestViewModel.closeDraftTask())}
   onRun={() => manifestViewModel.runDraft()}
   onClose={() => { manifestViewModel.closeDraftTask(); selection.clear(); }}
   next={{ label: $t('mf_next_manifest'), onNext: () => { manifestViewModel.closeDraftTask(); selection.clear(); onDrafted?.(); } }}

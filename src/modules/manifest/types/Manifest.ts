@@ -37,6 +37,8 @@ export type DiagnosticSeverity = 'error' | 'warning' | 'info';
 
 export type ManifestDiagnostic = {
   severity: DiagnosticSeverity;
+  /** どのスキーマの指摘か。複数スキーマをまとめて見るときに付く。 */
+  schemaName?: string;
   /**
    * manifest の構造をそのまま辿れる表記。JSON Pointer ではないので、
    * 編集フォームのパスへ機械的に写せる。
@@ -152,11 +154,21 @@ export type ManifestDocument = {
   operations?: Record<string, ManifestOperation>;
 };
 
+/** テーブルから自動生成された CRUD。宣言が無いので編集できない。 */
+export type CatalogCrud = {
+  schemaName: string;
+  tableName: string;
+  resourceName: string;
+  operations: string[];
+};
+
 /** マニフェスト一覧の 1 行。スキーマごとに 1 件。 */
 export type ManifestOverview = {
   schemaName: string;
   comment: string | null;
   hasManifest: boolean;
+  /** 出力される内容が変わるので一覧に出す。 */
+  generationMode: string | null;
   profiles: ProfileName[];
   operationCount: number;
   publicRouteCount: number;

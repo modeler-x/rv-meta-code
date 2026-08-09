@@ -2,7 +2,8 @@ use tauri::AppHandle;
 
 use crate::commands::metadata::build_service;
 use crate::dto::metadata_dto::{
-    ManifestCoverageDto, ManifestDiagnosticDto, ManifestDto, ManifestFieldDto, ManifestFunctionDto,
+    CatalogCrudDto, CatalogFunctionDto, ManifestCoverageDto, ManifestDiagnosticDto, ManifestDto,
+    ManifestFieldDto, ManifestFunctionDto, ManifestOverviewDto,
 };
 use crate::errors::app_error::AppError;
 
@@ -58,4 +59,22 @@ pub async fn manifest_functions(
 #[tauri::command]
 pub async fn manifest_fields(app: AppHandle) -> Result<Vec<ManifestFieldDto>, AppError> {
     build_service(&app)?.manifest_fields().await
+}
+
+/// 一覧の集約。スキーマごとに問い合わせず 1 回で全件返す。
+#[tauri::command]
+pub async fn manifest_overview(app: AppHandle) -> Result<Vec<ManifestOverviewDto>, AppError> {
+    build_service(&app)?.manifest_overview().await
+}
+
+/// スキーマを跨いだオペレーション一覧の材料。
+#[tauri::command]
+pub async fn all_manifest_functions(app: AppHandle) -> Result<Vec<CatalogFunctionDto>, AppError> {
+    build_service(&app)?.all_manifest_functions().await
+}
+
+/// テーブルから自動生成された CRUD。編集できない行として一覧に出す。
+#[tauri::command]
+pub async fn catalog_crud(app: AppHandle) -> Result<Vec<CatalogCrudDto>, AppError> {
+    build_service(&app)?.catalog_crud().await
 }

@@ -71,22 +71,42 @@ test.describe('オペレーション', () => {
       .toEqual(['Bulk']);
   });
 
-  test('bff タブでは公開と非公開が分かる', async ({ page }) => {
+  test('bff に並ぶのは公開しているものだけ', async ({ page }) => {
+    // 内部契約しか持たない宣言まで並べると、どれが外に出ているのか読めなくなる。
     await selectProfile(page, 'bff');
 
-    // bff は公開の判断が済んでいるもの（宣言済み）だけを扱う。
-    const declared = Object.keys(manifest.operations);
-    await expect(page.locator('[data-testid="operation-row"]')).toHaveCount(declared.length);
-
-    for (const key of declared) {
-      const row = page.locator(`[data-testid="operation-row"][data-operation="${key}"]`);
-      await expect(row).toHaveAttribute('data-routes', String(routeCount(manifest, key)));
-      await expect(row.locator('[data-testid="public-state"]')).toHaveAttribute(
-        'data-public',
-        String(routeCount(manifest, key) > 0)
-      );
+    const published = Object.keys(manifest.operations).filter((key) => routeCount(manifest, key) > 0);
+    const rows = page.locator('[data-testid="operation-row"]');
+    for (const key of published) {
+      await expect(page.locator(`[data-testid="operation-row"][data-operation="${key}"]`)).toBeVisible();
     }
+    // 公開していない宣言は一覧に出ない。
+    const unpublished = Object.keys(manifest.operations).filter((key) => routeCount(manifest, key) === 0);
+    for (const key of unpublished) {
+      await expect(page.locator(`[data-testid="operation-row"][data-operation="${key}"]`)).toHaveCount(0);
+    }
+    await expect(rows.first()).toHaveAttribute('data-routes', /[1-9]/);
     await page.screenshot({ path: 'tests/e2e/artifacts/07-operations-bff.png', fullPage: true });
+  });
+
+  test('公開していない宣言は「公開の候補」として分ける', async ({ page }) => {
+    // 公開するかは業務判断。一覧から消すのではなく、別枠に置いて選べるようにする。
+    await selectProfile(page, 'bff');
+    const candidate = Object.keys(manifest.operations).find((key) => routeCount(manifest, key) === 0);
+    test.skip(!candidate, '未公開の宣言がフィクスチャに無い');
+
+    await expect(
+      page.locator(`[data-testid="candidate-row"][data-operation="${candidate}"]`)
+    ).toBeVisible();
+  });
+
+  test('function のみ表示を外すと、テーブル CRUD も並ぶ', async ({ page }) => {
+    // CRUD はカタログから自動生成される。宣言が無いので編集できない行として出す。
+    test.skip(fixture.crud.length === 0, 'CRUD を持つスキーマがフィクスチャに無い');
+
+    await expect(page.locator('[data-testid="crud-row"]')).toHaveCount(0);
+    await page.locator('[data-testid="only-functions"]').uncheck();
+    await expect(page.locator('[data-testid="crud-row"]').first()).toBeVisible();
   });
 
   test('編集画面は全項目を有効値と由来つきで並べる', async ({ page }) => {
@@ -189,12 +209,18 @@ test.describe('オペレーション', () => {
 
     await openOperations(page, schemaName!);
     await selectProfile(page, 'bff');
-    const row = page.locator(`[data-testid="operation-row"][data-operation="${key}"]`);
-    await row.locator('[data-testid="operation-row-select"]').check();
+    // 未公開の宣言は「公開の候補」に並ぶ。そこから選んで公開する。
+    const row = page.locator(`[data-testid="candidate-row"][data-operation="${key}"]`);
+    await row.locator('[data-testid="candidate-row-select"]').check();
     await page.locator('[data-testid="bulk-publish"]').click();
 
-    // 1 本のルートができ、DEFAULT を持たない引数は body に置かれる。
-    await page.locator(`[data-testid="edit-operation"][data-operation="${key}"]`).click();
+    // 公開すると候補から外れ、公開済みの一覧へ移る。
+    await expect(page.locator(`[data-testid="candidate-row"][data-operation="${key}"]`)).toHaveCount(0);
+    const published = page.locator(`[data-testid="operation-row"][data-operation="${key}"]`);
+    await expect(published).toHaveAttribute('data-routes', '1');
+
+    // DEFAULT を持たない引数は body に置かれる。
+    await published.locator('[data-testid="edit-operation"]').click();
     const required = functionOf(schemaName!, key)!.arguments.filter((a) => a.required);
     for (const argument of required) {
       await expect(
