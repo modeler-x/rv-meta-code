@@ -23,6 +23,7 @@
   import ServerPage from '@/pages/ServerPage.svelte';
   import FunctionListPage from '@/pages/FunctionListPage.svelte';
   import HelpPage from '@/pages/HelpPage.svelte';
+  import WorkflowManifestPage from '@/pages/WorkflowManifestPage.svelte';
   import { SchemaViewModel } from '@/modules/schema/viewmodels/SchemaViewModel.svelte';
   import { DocumentViewModel } from '@/modules/document/viewmodels/DocumentViewModel.svelte';
   import { EntityViewModel } from '@/modules/entity/viewmodels/EntityViewModel.svelte';
@@ -37,6 +38,7 @@
   import type { RecentActivity } from '@/modules/recent/types/RecentActivity';
   import type { CurrentConnectionDto } from '@/modules/connection/dto/ConnectionDto';
   import { translate as t } from '@/shared/i18n/i18n.svelte';
+  import { WorkflowManifestViewModel } from '@/modules/workflow-manifest/viewmodels/WorkflowManifestViewModel.svelte';
 
   let route: AppRoute = $state({ name: 'welcome' });
   let currentConnection = $state<CurrentConnectionDto | null>(null);
@@ -49,6 +51,7 @@
   const componentViewModel = new ComponentViewModel(appProvider.componentService);
   const generationViewModel = new GenerationViewModel(appProvider.generationService);
   const recentViewModel = new RecentViewModel(appProvider.recentService);
+  const workflowManifestViewModel = new WorkflowManifestViewModel(appProvider.workflowManifestService);
   // 生成成功後はドキュメントを再読込し、履歴に記録する。
   generationViewModel.onCompiled = () => {
     void documentViewModel.loadDocuments();
@@ -183,7 +186,7 @@
   const selectedGroup = $derived(operationGroupViewModel.findGroup(route.groupKey, route.schemaName));
   const selectedFunctionOperation = $derived(operationGroupViewModel.findOperation(route.operationRowId));
   const connectionLabel = $derived(currentConnection ? `${currentConnection.database} / ${currentConnection.host}` : $t('no_connection'));
-  const titleMap = $derived({ welcome: $t('title_welcome'), schema: $t('title_schemas'), manifest: $t('title_manifest'), manifestOperations: $t('title_operations'), sdkList: $t('nav_sdk'), documents: $t('title_documents'), documentDetail: selectedDocument?.title ?? $t('title_documents'), entities: $t('title_entities'), entityDetail: selectedEntity?.tableName ?? '', functions: $t('title_functions'), help: $t('title_help'), operationDetail: selectedOperation?.path ?? $t('sec_operations'), operationGroupDetail: selectedGroup?.displayName ?? $t('title_operation_group'), functionOperationDetail: selectedFunctionOperation?.path ?? $t('sec_operations'), sdkGeneration: $t('title_sdk'), components: $t('title_components'), recent: $t('title_recent'), profile: $t('title_profile'), connections: $t('title_connections'), servers: $t('title_servers') });
+  const titleMap = $derived({ welcome: $t('title_welcome'), schema: $t('title_schemas'), manifest: $t('title_manifest'), manifestOperations: $t('title_operations'), sdkList: $t('nav_sdk'), documents: $t('title_documents'), documentDetail: selectedDocument?.title ?? $t('title_documents'), entities: $t('title_entities'), entityDetail: selectedEntity?.tableName ?? '', functions: $t('title_functions'), help: $t('title_help'), operationDetail: selectedOperation?.path ?? $t('sec_operations'), operationGroupDetail: selectedGroup?.displayName ?? $t('title_operation_group'), functionOperationDetail: selectedFunctionOperation?.path ?? $t('sec_operations'), sdkGeneration: $t('title_sdk'), components: $t('title_components'), workflowManifest: $t('title_workflow_manifest'), recent: $t('title_recent'), profile: $t('title_profile'), connections: $t('title_connections'), servers: $t('title_servers') });
   const title = $derived(titleMap[route.name]);
 </script>
 
@@ -192,7 +195,7 @@
   <main class="relative flex min-h-0 min-w-0 flex-col overflow-hidden bg-[color:var(--rvc-bg)]">
     <MainHeader {route} {title} onBack={goBack} {connectionLabel} />
     <section class="min-h-0 flex-1 overflow-y-auto px-8 py-7">
-      <div class="mx-auto max-w-3xl">
+      <div class={`mx-auto ${route.name === 'workflowManifest' ? 'max-w-6xl' : 'max-w-3xl'}`}>
         {#if route.name === 'welcome'}
           <WelcomePage onNavigate={navigate} />
         {:else if route.name === 'schema'}
@@ -207,6 +210,8 @@
           <SdkGenerationPage viewModel={sdkGenerationViewModel} schema={route.schemaName ?? ''} profile={route.profile ?? ''} />
         {:else if route.name === 'components'}
           <ComponentsPage viewModel={componentViewModel} schema={route.schemaName ?? ''} profile={route.profile ?? ''} />
+        {:else if route.name === 'workflowManifest'}
+          <WorkflowManifestPage viewModel={workflowManifestViewModel} />
         {:else if route.name === 'entities'}
           <EntityListPage viewModel={entityViewModel} onOpenEntity={(entityId) => openEntity(entityId)} />
         {:else if route.name === 'entityDetail' && selectedEntity}

@@ -12,7 +12,7 @@ export default defineConfig({
   reporter: [['list'], ['html', { outputFolder: 'tests/e2e/report', open: 'never' }]],
   outputDir: 'tests/e2e/artifacts',
   use: {
-    baseURL: 'http://127.0.0.1:5173',
+    baseURL: 'http://127.0.0.1:5178',
     // 失敗時だけ残す。通ったときに大量の成果物を積み上げない。
     trace: 'retain-on-failure',
     video: 'off'
@@ -20,7 +20,7 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: 'pnpm dev:stub',
-    url: 'http://127.0.0.1:5173',
+    url: 'http://127.0.0.1:5178',
     reuseExistingServer: !process.env.CI,
     timeout: 60_000
   }

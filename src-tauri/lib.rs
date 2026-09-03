@@ -42,6 +42,9 @@ use crate::commands::server::delete::delete_server;
 use crate::commands::server::list::list_servers;
 use crate::commands::server::save::save_server;
 use crate::commands::server::test::test_server;
+use crate::commands::workflow_manifest::{
+    save_workflow_manifest, save_workflow_manifest_as, scan_worker_components,
+};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -102,7 +105,10 @@ pub fn run() {
             list_servers,
             save_server,
             delete_server,
-            test_server
+            test_server,
+            scan_worker_components,
+            save_workflow_manifest,
+            save_workflow_manifest_as
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

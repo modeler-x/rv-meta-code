@@ -21,6 +21,8 @@ import { GenerationService } from '@/modules/generation/services/GenerationServi
 import { ProfileService } from '@/modules/profile/services/ProfileService';
 import { PreferencesService } from '@/modules/preferences/services/PreferencesService';
 import { RecentService } from '@/modules/recent/services/RecentService';
+import { WorkflowManifestService } from '@/modules/workflow-manifest/services/WorkflowManifestService';
+import { WorkflowManifestRepository } from '@/modules/workflow-manifest/repositories/WorkflowManifestRepository';
 
 export const appProvider = {
   routeService: new RouteService(),
@@ -31,6 +33,7 @@ export const appProvider = {
   operationGroupService: new OperationGroupService(new OperationGroupRepository()),
   sdkGenerationService: new SdkGenerationService(new SdkGenerationRepository()),
   componentService: new ComponentService(new ComponentRepository()),
+  workflowManifestService: new WorkflowManifestService(new WorkflowManifestRepository()),
   connectionService: new ConnectionService(new ConnectionRepository()),
   serverService: new ServerService(new ServerRepository()),
   generationService: new GenerationService(),

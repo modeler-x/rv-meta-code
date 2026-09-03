@@ -20,7 +20,7 @@ pnpm tauri dev
 ```bash
 # (初回のみ) pnpm install
 # (ブラウザ確認用) pnpm tauri dev
-# http://127.0.0.1:5173/ をブラウザで開く
+# http://127.0.0.1:5178/ をブラウザで開く
 ```
 
 ## 前提

@@ -6,9 +6,10 @@ export default defineConfig({
   plugins: [svelte()],
   server: {
     host: '127.0.0.1',
-    // Tauri の devUrl(5173) と一致させる。埋まっていたら黙って別ポートに
+    // Tauri の devUrl(5178) と一致させる。5173 は local の RV Auth が使う。
+    // 埋まっていたら黙って別ポートに
     // 逃げず即エラーにし、白画面（ポート不一致）を防ぐ。
-    port: 5173,
+    port: 5178,
     strictPort: true
   },
   resolve: {

@@ -14,6 +14,7 @@ export type AppRouteName =
   | 'sdkGeneration'
   | 'sdkList'
   | 'components'
+  | 'workflowManifest'
   | 'recent'
   | 'help'
   | 'profile'
